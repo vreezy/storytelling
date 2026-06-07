@@ -1,0 +1,88 @@
+// Shared utilities for setup.js and game.js
+
+import { initApi } from './api.js';
+
+export async function loadConfig() {
+  const r = await fetch('./dungeon-config.json');
+  if (!r.ok) throw new Error('Failed to load dungeon-config.json');
+  return r.json();
+}
+
+export { initApi };
+
+// ── Date parsing ──────────────────────────────────────────────────────────────
+export function parseDate(str) {
+  if (!str) return '—';
+  let d = new Date(str);
+  if (isNaN(d)) d = new Date(str + 'Z');
+  return isNaN(d) ? '—' : d.toLocaleString();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+export function showToast(message, type = 'info') {
+  const id = `toast-${Date.now()}`;
+  const el = $(`
+    <div id="${id}" class="toast align-items-center text-bg-${type} border-0 mb-2" role="alert">
+      <div class="d-flex">
+        <div class="toast-body">${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>
+    </div>
+  `);
+  $('#toast-container').append(el);
+  const toast = new bootstrap.Toast(el[0], { delay: 4000 });
+  toast.show();
+  el[0].addEventListener('hidden.bs.toast', () => el.remove());
+}
+
+// ── Health badge ──────────────────────────────────────────────────────────────
+export function setHealthBadge(ok, label) {
+  const cls  = ok ? 'bg-success' : 'bg-danger';
+  const text = `⬤ ${label}`;
+  // update whichever badge element is present on the current page
+  $('#health-badge, #health-badge-game')
+    .text(text)
+    .removeClass('bg-secondary bg-success bg-danger')
+    .addClass(cls);
+}
+
+export function pollHealth(config, onStatusChange) {
+  checkHealth(config, onStatusChange);
+  return setInterval(() => checkHealth(config, onStatusChange), 5000);
+}
+
+async function checkHealth(config, onStatusChange) {
+  const url = `${config.backendUrl}/api/health`;
+  try {
+    const r    = await fetch(url, { signal: AbortSignal.timeout(3000) });
+    const data = await r.json();
+    const ok   = data.ollama === 'ok' && data.db === 'ok';
+    const label = data.ollama === 'ok' ? (data.db === 'ok' ? 'online' : 'DB error') : 'Ollama offline';
+    setHealthBadge(ok, label);
+    onStatusChange?.(ok);
+  } catch {
+    setHealthBadge(false, 'backend offline');
+    onStatusChange?.(false);
+  }
+}
+
+// ── Template rendering ────────────────────────────────────────────────────────
+// Clones a <template id="tmpl-*"> and fills placeholders:
+//   data-bind="key"         → sets .text()
+//   data-bind="key" data-attr="attr" → sets the named attribute
+//   data-html="key"         → sets .html()
+//   data-show="key"         → toggles .d-none based on truthiness
+export function renderTemplate(id, data = {}) {
+  const tmpl = document.getElementById(id);
+  const $el  = $(tmpl.content.cloneNode(true));
+  Object.entries(data).forEach(([k, v]) => {
+    $el.find(`[data-bind="${k}"]`).each(function () {
+      const attr = $(this).data('attr');
+      if (attr) $(this).attr(attr, v ?? '');
+      else      $(this).text(v ?? '');
+    });
+    $el.find(`[data-html="${k}"]`).html(v ?? '');
+    $el.find(`[data-show="${k}"]`).toggleClass('d-none', !v);
+  });
+  return $el;
+}

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StoryTelling — Play</title>
+  <link rel="stylesheet" href="libs/bootstrap.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-vh-100 d-flex flex-column">
+
+  <!-- Toast container -->
+  <div id="toast-container" class="position-fixed bottom-0 end-0 p-3" style="z-index: 1100"></div>
+
+  <!-- ====== GAME SCREEN ====== -->
+  <div id="game-screen" class="d-flex flex-column" style="height: 100vh;">
+
+    <!-- Game header -->
+    <div class="border-bottom px-3 py-2 d-flex justify-content-between align-items-center flex-shrink-0">
+      <div class="d-flex align-items-center gap-3">
+        <a href="index.html" class="fw-bold text-decoration-none text-body">⚔️ StoryTelling</a>
+        <span id="scenario-title" class="text-secondary"></span>
+        <span id="health-badge-game" class="badge bg-secondary">⬤ checking…</span>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        <small id="context-label" class="text-secondary d-none d-sm-inline"></small>
+        <div class="progress d-none d-sm-flex" style="width: 70px; height: 5px;">
+          <div id="context-bar" class="progress-bar bg-success" role="progressbar"
+               style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <button id="char-toggle-btn" class="btn btn-sm btn-outline-secondary" title="Character Sheet">📋</button>
+        <button id="debug-btn" class="btn btn-sm btn-outline-secondary" title="Prompt Debug Editor">🔧</button>
+      </div>
+    </div>
+
+    <!-- Content row: story + sidebar -->
+    <div class="d-flex flex-grow-1 overflow-hidden">
+
+      <!-- Left: story + action input -->
+      <div class="d-flex flex-column flex-grow-1 overflow-hidden">
+        <div id="story-text" class="flex-grow-1 overflow-auto p-3 p-md-4"></div>
+
+        <!-- Debug panel (collapsible) -->
+        <div id="debug-panel" class="border-top d-none">
+          <div class="accordion accordion-flush" id="debug-accordion">
+            <div class="accordion-item bg-transparent border-0">
+              <h2 class="accordion-header">
+                <button class="accordion-button collapsed py-2 small text-secondary bg-transparent"
+                        type="button" data-bs-toggle="collapse" data-bs-target="#debug-body">
+                  🔧 Debug — Last Turn
+                </button>
+              </h2>
+              <div id="debug-body" class="accordion-collapse collapse">
+                <div class="accordion-body py-2 small">
+                  <div class="row g-2 mb-2">
+                    <div class="col-auto"><span class="text-secondary">Prompt tokens:</span> <strong id="dbg-prompt-tok">—</strong></div>
+                    <div class="col-auto"><span class="text-secondary">Completion tokens:</span> <strong id="dbg-compl-tok">—</strong></div>
+                    <div class="col-auto"><span class="text-secondary">Total:</span> <strong id="dbg-total-tok">—</strong></div>
+                    <div class="col-auto"><span class="text-secondary">Duration:</span> <strong id="dbg-duration">—</strong></div>
+                    <div class="col-auto"><span class="text-secondary">tok/s:</span> <strong id="dbg-tps">—</strong></div>
+                  </div>
+                  <div class="mb-2">
+                    <div class="text-secondary mb-1">Full prompt sent (messages JSON):</div>
+                    <textarea id="dbg-prompt" class="form-control form-control-sm font-monospace" rows="6" readonly></textarea>
+                  </div>
+                  <div>
+                    <div class="text-secondary mb-1">Ollama request JSON:</div>
+                    <textarea id="dbg-ollama-req" class="form-control form-control-sm font-monospace" rows="4" readonly></textarea>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action input -->
+        <div class="border-top p-3 flex-shrink-0">
+          <div class="input-group mb-2">
+            <select id="action-type" class="form-select" style="max-width: 110px;">
+              <option value="do">Do</option>
+              <option value="say">Say</option>
+              <option value="story">Story</option>
+            </select>
+            <input id="action-input" type="text" class="form-control"
+                   placeholder="What do you do? (Enter to send)" disabled>
+            <button id="send-btn" class="btn btn-primary" disabled>Send</button>
+          </div>
+          <div class="d-flex gap-2">
+            <button id="undo-btn" class="btn btn-sm btn-outline-secondary" disabled>↩ Undo</button>
+            <button id="retry-btn" class="btn btn-sm btn-outline-warning" disabled>↺ Retry</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right: sidebar (Character + World Cards) -->
+      <div id="char-sheet" class="border-start d-flex flex-column flex-shrink-0" style="width: 260px; display: none !important;">
+
+        <!-- Tabs -->
+        <ul class="nav nav-tabs nav-fill flex-shrink-0 px-2 pt-2" id="sidebar-tabs">
+          <li class="nav-item">
+            <button class="nav-link active small py-1" id="tab-char-btn" data-tab="char">Character</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link small py-1" id="tab-world-btn" data-tab="world">World</button>
+          </li>
+        </ul>
+
+        <!-- Character tab -->
+        <div id="tab-char" class="flex-grow-1 overflow-auto p-3">
+          <div id="char-fields"></div>
+        </div>
+
+        <!-- World Cards tab -->
+        <div id="tab-world" class="flex-grow-1 overflow-auto p-3 d-none">
+          <button id="add-card-btn" class="btn btn-sm btn-outline-primary w-100 mb-3">+ Add Card</button>
+          <div id="world-cards-list"></div>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ====== DEBUG MODAL (full prompt editor) ====== -->
+  <div class="modal fade" id="debug-modal" tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header py-2">
+          <h6 class="modal-title mb-0">🔧 Prompt Debug Editor</h6>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3 mb-3">
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold small">Global System Prompt</label>
+              <textarea id="debug-global-prompt" class="form-control form-control-sm font-monospace" rows="5"></textarea>
+            </div>
+            <div class="col-12 col-md-6">
+              <label class="form-label fw-semibold small">Scenario Prompt</label>
+              <textarea id="debug-scenario-prompt" class="form-control form-control-sm font-monospace" rows="5"></textarea>
+            </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Character Context <span class="text-secondary">(computed)</span></label>
+            <input id="debug-char-context" type="text" class="form-control form-control-sm font-monospace" readonly>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Action Prompts</label>
+            <div class="row g-2">
+              <div class="col-4">
+                <label class="form-label small text-secondary mb-1">Do</label>
+                <textarea id="debug-action-do" class="form-control form-control-sm font-monospace" rows="2"></textarea>
+              </div>
+              <div class="col-4">
+                <label class="form-label small text-secondary mb-1">Say</label>
+                <textarea id="debug-action-say" class="form-control form-control-sm font-monospace" rows="2"></textarea>
+              </div>
+              <div class="col-4">
+                <label class="form-label small text-secondary mb-1">Story</label>
+                <textarea id="debug-action-story" class="form-control form-control-sm font-monospace" rows="2"></textarea>
+              </div>
+            </div>
+          </div>
+          <hr class="border-secondary">
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">
+              Combined System Content
+              <span class="text-secondary">(preview for current action type: <span id="debug-active-action">do</span>)</span>
+            </label>
+            <textarea id="debug-combined" class="form-control form-control-sm font-monospace" rows="6" readonly></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Last Messages Sent to Ollama <span class="text-secondary">(JSON)</span></label>
+            <textarea id="debug-last-prompt" class="form-control form-control-sm font-monospace" rows="10" readonly></textarea>
+          </div>
+          <hr class="border-secondary">
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">
+              Next Prompt
+              <span class="text-secondary">(full messages array if Send is pressed now, action type:
+                <span id="debug-next-action-type">do</span>)</span>
+            </label>
+            <div class="mb-2">
+              <label class="small text-secondary">Current action input</label>
+              <input id="debug-action-preview" type="text" class="form-control form-control-sm font-monospace" readonly>
+            </div>
+            <textarea id="debug-next-prompt" class="form-control form-control-sm font-monospace" rows="12" readonly></textarea>
+          </div>
+        </div>
+        <div class="modal-footer py-2">
+          <small class="text-secondary me-auto">Edits to prompts above apply to the next action</small>
+          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== TEMPLATES ====== -->
+
+  <!-- Character sidebar fields -->
+  <template id="tmpl-char-fields">
+    <div class="mb-2">
+      <label class="small text-secondary mb-1 d-block">Name</label>
+      <input id="char-name-edit" type="text" class="form-control form-control-sm" placeholder="Hero">
+    </div>
+    <div class="mb-2">
+      <label class="small text-secondary mb-1 d-block">Class</label>
+      <input id="char-class-edit" type="text" class="form-control form-control-sm" placeholder="—">
+    </div>
+    <div class="mb-2">
+      <label class="small text-secondary mb-1 d-block">Description</label>
+      <textarea id="char-desc-edit" class="form-control form-control-sm" rows="3" placeholder="—"></textarea>
+    </div>
+    <div class="mb-2">
+      <label class="small text-secondary mb-1 d-block">Notes</label>
+      <textarea id="char-notes-edit" class="form-control form-control-sm" rows="3"
+                placeholder="Inventory, quests, relationships…"></textarea>
+    </div>
+  </template>
+
+  <!-- World card -->
+  <template id="tmpl-world-card">
+    <div class="card bg-dark border-secondary mb-2">
+      <div class="card-body p-2">
+        <div class="d-flex align-items-center gap-1 mb-1">
+          <div class="form-check form-switch mb-0 me-1">
+            <input class="form-check-input card-active-toggle" type="checkbox">
+          </div>
+          <select class="form-select form-select-sm card-type-sel" style="width:90px">
+            <option value="location">location</option>
+            <option value="npc">npc</option>
+            <option value="item">item</option>
+            <option value="faction">faction</option>
+            <option value="lore">lore</option>
+          </select>
+          <button class="btn btn-sm btn-outline-danger ms-auto card-del-btn" style="padding:1px 6px">✕</button>
+        </div>
+        <input type="text" class="form-control form-control-sm mb-1 card-name-input" placeholder="Name">
+        <textarea class="form-control form-control-sm card-desc-input" rows="2" placeholder="Description…"></textarea>
+      </div>
+    </div>
+  </template>
+
+  <!-- Load game row (used in load modal in game.html if added later) -->
+  <template id="tmpl-game-row">
+    <tr style="cursor:pointer">
+      <td><strong data-bind="title"></strong></td>
+      <td data-bind="scenario"></td>
+      <td><small class="text-secondary" data-bind="model"></small></td>
+      <td class="text-end"><small class="text-secondary" data-bind="lastPlayed"></small></td>
+      <td><button class="btn btn-sm btn-outline-danger delete-game-btn">✕</button></td>
+    </tr>
+  </template>
+
+  <script src="libs/jquery.min.js"></script>
+  <script src="libs/bootstrap.bundle.min.js"></script>
+  <script type="module" src="game.js"></script>
+</body>
+</html>
