@@ -49,6 +49,10 @@ def init_db():
     if "custom_prompt" not in cols:
         conn.execute("ALTER TABLE games ADD COLUMN custom_prompt TEXT")
         conn.commit()
+    card_cols = {r[1] for r in conn.execute("PRAGMA table_info(world_cards)").fetchall()}
+    if "triggers" not in card_cols:
+        conn.execute("ALTER TABLE world_cards ADD COLUMN triggers TEXT")
+        conn.commit()
     conn.close()
 
 
@@ -451,10 +455,10 @@ async def create_card(game_id: int, request: Request):
     body = await request.json()
     conn = get_db()
     cur  = conn.execute(
-        """INSERT INTO world_cards (game_id, type, name, description, active, sort_order)
-           VALUES (?,?,?,?,1,?)""",
+        """INSERT INTO world_cards (game_id, type, name, description, active, sort_order, triggers)
+           VALUES (?,?,?,?,1,?,?)""",
         (game_id, body.get("type", "location"), body.get("name", ""),
-         body.get("description"), body.get("sort_order", 0)),
+         body.get("description"), body.get("sort_order", 0), body.get("triggers")),
     )
     conn.commit()
     row = conn.execute("SELECT * FROM world_cards WHERE id=?", (cur.lastrowid,)).fetchone()
@@ -469,11 +473,11 @@ async def update_card(game_id: int, card_id: int, request: Request):
     conn = get_db()
     conn.execute(
         """UPDATE world_cards
-           SET type=?, name=?, description=?, active=?, sort_order=?, updated_at=?
+           SET type=?, name=?, description=?, active=?, sort_order=?, triggers=?, updated_at=?
            WHERE id=? AND game_id=?""",
         (body.get("type", "location"), body.get("name"), body.get("description"),
          1 if body.get("active", True) else 0,
-         body.get("sort_order", 0), now, card_id, game_id),
+         body.get("sort_order", 0), body.get("triggers"), now, card_id, game_id),
     )
     conn.commit()
     row = conn.execute("SELECT * FROM world_cards WHERE id=?", (card_id,)).fetchone()

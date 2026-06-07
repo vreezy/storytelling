@@ -61,6 +61,7 @@ CREATE TABLE IF NOT EXISTS world_cards (
     description TEXT,
     active      INTEGER  NOT NULL DEFAULT 1,    -- 0 = disabled
     sort_order  INTEGER  NOT NULL DEFAULT 0,
+    triggers    TEXT,                           -- comma-separated keywords; empty = always injected
     created_at  DATETIME DEFAULT (datetime('now')),
     updated_at  DATETIME DEFAULT (datetime('now'))
 );

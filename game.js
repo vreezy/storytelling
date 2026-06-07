@@ -246,7 +246,7 @@ function buildMessages(actionType, playerLine) {
   const actionPrompt = actionType === 'continue'
     ? ''
     : (state.config.actionPrompts?.[actionType] || '');
-  const cardsCtx     = buildCardsContext();
+  const cardsCtx     = buildCardsContext(playerLine || '');
   let sysContent = [
     state.systemPrompt, state.scenarioPrompt, state.customPrompt, charCtx, cardsCtx, actionPrompt,
   ].filter(Boolean).join('\n\n');
@@ -315,8 +315,6 @@ function rebuildStoryDisplay() {
 
 function attachSegmentEdit($span, idx) {
   $span.on('click', function () {
-    if (state.generating) return;
-
     // Close any other open edit first
     if (_cancelSegEdit) _cancelSegEdit();
 
@@ -499,10 +497,25 @@ function buildCharacterContext() {
   return parts.length ? `The protagonist is ${parts.join(' — ')}.` : '';
 }
 
-function buildCardsContext() {
+function buildCardsContext(playerLine = '') {
   const active = (state.cards || []).filter(c => c.active);
   if (!active.length) return '';
-  const lines = active.map(c =>
+
+  // Search text: current player action + last 2 messages
+  const searchText = [
+    playerLine,
+    ...state.messages.slice(-2).map(m => m.content),
+  ].join(' ').toLowerCase();
+
+  const relevant = active.filter(c => {
+    if (!c.triggers) return true; // no triggers = pinned, always included
+    const keywords = c.triggers.split(',').map(t => t.trim().toLowerCase()).filter(Boolean);
+    if (!keywords.length) return true;
+    return keywords.some(k => searchText.includes(k));
+  });
+
+  if (!relevant.length) return '';
+  const lines = relevant.map(c =>
     `[${c.type.toUpperCase()}] ${c.name}${c.description ? ': ' + c.description : ''}`
   );
   return 'World context:\n' + lines.join('\n');
@@ -552,6 +565,7 @@ function buildCardEl(card) {
   $el.find('.card-type-sel').val(card.type || 'location');
   $el.find('.card-name-input').val(card.name || '');
   $el.find('.card-desc-input').val(card.description || '');
+  $el.find('.card-triggers-input').val(card.triggers || '');
 
   async function saveCard() {
     const idx = state.cards.findIndex(c => c.id === card.id);
@@ -560,6 +574,7 @@ function buildCardEl(card) {
       type:        $el.find('.card-type-sel').val(),
       name:        $el.find('.card-name-input').val().trim(),
       description: $el.find('.card-desc-input').val().trim(),
+      triggers:    $el.find('.card-triggers-input').val().trim(),
       active:      $el.find('.card-active-toggle').is(':checked') ? 1 : 0,
     };
     await putCard(state.gameId, card.id, updated).catch(() => {});
@@ -567,7 +582,7 @@ function buildCardEl(card) {
   }
 
   $el.find('.card-active-toggle, .card-type-sel').on('change', saveCard);
-  $el.find('.card-name-input, .card-desc-input').on('blur', saveCard);
+  $el.find('.card-name-input, .card-desc-input, .card-triggers-input').on('blur', saveCard);
   $el.find('.card-del-btn').on('click', async () => {
     if (!confirm(`Delete card "${card.name}"?`)) return;
     await deleteCard(state.gameId, card.id).catch(() => {});

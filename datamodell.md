@@ -62,6 +62,7 @@ erDiagram
         TEXT description
         INTEGER active
         INTEGER sort_order
+        TEXT triggers
         DATETIME created_at
         DATETIME updated_at
     }
@@ -113,3 +114,4 @@ erDiagram
 |---|---|
 | `type` | `location` / `npc` / `item` / `faction` / `lore` |
 | `active` | 0 = inaktiv (nicht in Kontext injiziert) |
+| `triggers` | Kommagetrennte Schlüsselwörter; leer = immer injiziert (pinned); gesetzt = nur injiziert wenn ein Keyword im aktuellen Spielerzug oder den letzten 2 Nachrichten vorkommt |

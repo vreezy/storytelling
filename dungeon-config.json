@@ -49,7 +49,63 @@
       "icon": "⚔️",
       "description": "The Forgotten Realms — races, classes, monsters and ancient magic",
       "systemPrompt": "Forgotten Realms, D&D world. Races: elves, dwarves, tieflings, dragonborn, halflings, half-orcs. Classes: rogues, wizards, paladins, clerics, bards, druids. Monsters: dragons, beholders, undead, mind flayers, goblins. Name spells and weapons. Dark dungeons, smoky taverns, dangerous wilderness. Magic has a cost.",
-      "openingText": "The torchlight gutters as you descend the last worn step into the dungeon beneath Neverwinter. Ahead, the passage forks — from the left comes a rhythmic dripping and the stench of something long dead; from the right, a faint amber glow and the unmistakable hiss of draconic speech. Your hand finds the hilt of your weapon before you even decide."
+      "openingText": "The torchlight gutters as you descend the last worn step into the dungeon beneath Neverwinter. Ahead, the passage forks — from the left comes a rhythmic dripping and the stench of something long dead; from the right, a faint amber glow and the unmistakable hiss of draconic speech. Your hand finds the hilt of your weapon before you even decide.",
+      "mainCharacters": [
+        {
+          "name": "Vael Ashmark",
+          "class": "Rogue / Shadow Walker",
+          "description": "A half-elf cutpurse from Neverwinter's docks who took one job too many for the wrong patron. Now carries a stolen map that may be worth dying over — and several people who think so too."
+        }
+      ],
+      "cards": [
+        {
+          "type": "location",
+          "name": "Neverwinter",
+          "description": "A coastal city built over layered secrets. Districts: the Docks (rogues, fences, the Black Spider's network), Protector's Enclave (city watch, nobles), Blacklake (wealthy, corrupt). Below the streets stretches a dungeon older than the city itself — originally a temple complex, now a warren of collapsed halls, trapped vaults, and things that moved in when the light went out."
+        },
+        {
+          "type": "location",
+          "name": "The Dungeon Depths",
+          "description": "A labyrinth beneath Neverwinter. Stone walls sweating with damp. Torchlight reveals carved reliefs of gods no longer worshipped. Passages branch constantly; dead ends are the rule. The air carries old blood and cold stone. Whatever built this place did not build it for comfort.",
+          "triggers": "down, stairs, passage, corridor, stone, underground, torch, dark, depth, below"
+        },
+        {
+          "type": "location",
+          "name": "Left Fork — The Dripping Warrens",
+          "description": "The passage drips steadily, the source unclear. The stench intensifies — decay, standing water, something organic. The floor is tacky underfoot. Whatever died here did so in quantity and was never removed. Low ceilings. The sounds are wrong: too regular, too patient.",
+          "triggers": "left, dripping, stench, dead, corpse, rot, smell, water, damp, warrens"
+        },
+        {
+          "type": "location",
+          "name": "Right Fork — The Amber Chamber",
+          "description": "Warm amber light pulses from deeper in, source unknown. The walls are smoother here, the carvings older and deliberate. Temperature rises noticeably. The draconic hissing is speech — low, measured, addressing something. The air smells of hot stone and old gold.",
+          "triggers": "right, amber, glow, hiss, warm, heat, draconic, light, voice, gold"
+        },
+        {
+          "type": "npc",
+          "name": "Xarenth the Young",
+          "description": "A young copper dragon occupying the right fork's depths, drawn here by the dungeon's age and the gold veins in the rock. Curious and verbose. Not immediately hostile — but dragon 'not hostile' still means lethal if insulted. Knows things about the dungeon's original builders that no human scholar does.",
+          "triggers": "dragon, xarenth, right fork, amber, draconic, hiss, beast, scales, copper"
+        },
+        {
+          "type": "npc",
+          "name": "Mira Tanlen",
+          "description": "A half-elf fence operating out of a back room in the Dockside Lantern tavern, Neverwinter. Pays fair prices, asks no questions, and knows everyone who moves stolen goods through the city. Reliable only as long as the money is right.",
+          "triggers": "fence, contact, sell, deal, tavern, inn, bar, drink, rumor, meet, docks, mira"
+        },
+        {
+          "type": "faction",
+          "name": "The City Watch",
+          "description": "Neverwinter's professional guard force — underpaid, overworked, and selectively corrupt. Three shifts patrol the major districts. They carry halberds in daylight and suspicion at all hours. Warrant-holders for known thieves are posted at the gates. Most can be bribed; a few cannot.",
+          "triggers": "guard, watch, patrol, law, arrest, warrant, authority, officer, wanted"
+        },
+        {
+          "type": "lore",
+          "name": "Dungeon Hazards",
+          "description": "The dungeon was built to keep things out — and some things in. Common hazards: pressure-plate dart traps (stone tiles that give slightly underfoot), tripwire bells (thin wire at ankle height), counterweight pit traps (floor panels on pivots). More dangerous: magical wards still active on some doors, and whatever lives in the left fork.",
+          "triggers": "trap, wire, mechanism, floor, pressure, plate, step, ceiling, click, tripwire, dart"
+        }
+      ]
     },
     {
       "id": "scifi",
@@ -57,7 +113,62 @@
       "icon": "🚀",
       "description": "Space cowboys, alien frontiers and the Queen of the Crown",
       "systemPrompt": "Year 2086, Galaxy Rangers. Space cowboys on the galactic frontier. BETA Mountain, ship Ranger One. Planets: peaceful Kirwin, outlaw Tortuna. Villain: Queen of the Crown, her psychocrystals and Crown Agents. Rangers: Foxx (cybernetic arm), Doc (robot implant), Niko (psychic), Goose (Supertrooper). Bold 80s space-western: vivid, pulpy, high stakes.",
-      "openingText": "Ranger One drops out of hyperspace above Tortuna, its shields already cycling up. Below, the red-dust hellhole sprawls under a bruised sky — somewhere down there, a Crown slaver ship is running a manifest that doesn't add up, and three Kiwi colonists from Kirwin haven't been heard from in a week. BETA Mountain is watching your telemetry. The call is yours."
+      "openingText": "Ranger One drops out of hyperspace above Tortuna, its shields already cycling up. Below, the red-dust hellhole sprawls under a bruised sky — somewhere down there, a Crown slaver ship is running a manifest that doesn't add up, and three Kiwi colonists from Kirwin haven't been heard from in a week. BETA Mountain is watching your telemetry. The call is yours.",
+      "mainCharacters": [
+        {
+          "name": "Shane Gooseman",
+          "class": "Galaxy Ranger — Series 5 Supertrooper",
+          "description": "Genetically engineered for combat, with bio-defenses that can adapt to almost any threat. The most physically capable of the Rangers. Speaks little, observes everything. Haunted by what he was made to be and quietly loyal to what he chose to become."
+        }
+      ],
+      "cards": [
+        {
+          "type": "location",
+          "name": "Ranger One",
+          "description": "The Galaxy Rangers' deep-space flagship. Crew: Commander Zachary Foxx (cybernetic arm, team leader), Hartford 'Doc' (tech specialist, robot implant), Niko (psychic, Series 5 precognition), Goose (Supertrooper, bio-defenses). Fast, armed, and operated out of BETA Mountain, Earth. Often the only law enforcement within several light-years."
+        },
+        {
+          "type": "faction",
+          "name": "Galaxy Rangers",
+          "description": "BETA Mountain's elite interstellar law enforcement. Four Rangers, each augmented by Series 5 implants. Operate under Commander Joseph Walsh's orders with broad jurisdiction and limited resources. Primary threat: the Queen of the Crown's psychocrystal slaver empire. Key allies: the peaceful Kiwi colonists of Kirwin."
+        },
+        {
+          "type": "location",
+          "name": "Tortuna",
+          "description": "The galaxy's worst outlaw planet. Red-dust atmosphere, grimy cantinas, no extradition. Crown Agents use it as a transit hub; bounty hunters use it as an office. Information is for sale here; loyalty is not. Anyone present is probably running from something.",
+          "triggers": "tortuna, outlaw, criminal, red dust, cantina, bar, bounty, underground, black market, planet surface"
+        },
+        {
+          "type": "location",
+          "name": "BETA Mountain",
+          "description": "Galaxy Ranger headquarters on Earth. Commander Walsh's operations center. Mission briefings, debriefs, equipment resupply. Walsh monitors ranger telemetry in real time and expects reports. The place Rangers return to when they survive.",
+          "triggers": "beta mountain, headquarters, walsh, commander, report, debrief, earth, home base, briefing"
+        },
+        {
+          "type": "location",
+          "name": "Kirwin",
+          "description": "A peaceful agricultural colony populated by Kiwi birds — gentle, round, flightless avians who want nothing but to farm and be left alone. Frequently targeted by Crown slavers for psychocrystal harvesting. The Rangers have a soft spot for Kirwin's colonists.",
+          "triggers": "kirwin, colony, kiwi, kiwi bird, peaceful, civilian, farm, settlement, colonists"
+        },
+        {
+          "type": "npc",
+          "name": "Commander Walsh",
+          "description": "Director of BETA Mountain and commanding officer of the Galaxy Rangers. Gruff, pragmatic, and strategically brilliant. Never sends the Rangers in without reason; rarely sends them in with enough backup. Cares about the team but can't always show it.",
+          "triggers": "walsh, commander, orders, mission, briefing, report, debrief, contact base"
+        },
+        {
+          "type": "npc",
+          "name": "The Queen of the Crown",
+          "description": "Absolute ruler of the Crown Empire. Uses psychocrystals — extracted from enslaved beings — to power her empire and her BrainGrid. Ancient, ruthless, and convinced of her right to conquer. Her agents are everywhere. She considers the Galaxy Rangers a personal affront.",
+          "triggers": "queen, crown, psychocrystal, crystal, slaver, slave, empire, enemy, brain grid"
+        },
+        {
+          "type": "faction",
+          "name": "Crown Agents",
+          "description": "Soldiers and operatives of the Crown Empire. Range from armored shock troops to covert infiltrators. All fanatically loyal to the Queen. Standard tactic: capture and deliver subjects for psychocrystal harvesting. Dangerous individually; overwhelming in numbers.",
+          "triggers": "crown agent, agent, soldier, attack, pursuit, patrol, crown ship, fighters, crown troops"
+        }
+      ]
     },
     {
       "id": "horror",
@@ -65,7 +176,63 @@
       "icon": "🕯️",
       "description": "Lovecraftian dread, the unknown, and truths that break minds",
       "systemPrompt": "Cosmic horror. Dread through absence: wrong sounds, mismatched shadows, creeping wrongness. The threat is never fully seen. Build tension slowly. Horror is the moment you understand something you cannot un-know. Restraint over gore. Lovecraftian atmosphere.",
-      "openingText": "The old manor stands exactly where your brother's last letter said it would — three miles past the collapsed mill, through a wood that the locals refuse to name. It is the fourth night of your search, and the fog has followed you since the village. Inside, a single candle burns in an upstairs window. You did not see it lit."
+      "openingText": "The old manor stands exactly where your brother's last letter said it would — three miles past the collapsed mill, through a wood that the locals refuse to name. It is the fourth night of your search, and the fog has followed you since the village. Inside, a single candle burns in an upstairs window. You did not see it lit.",
+      "mainCharacters": [
+        {
+          "name": "Edmund Harlow",
+          "class": "Private Investigator / Former Academic",
+          "description": "Trained as a historian before something he found in an archive changed what he could believe. Now works private cases — mostly missing persons, occasionally things he wishes he hadn't found. Methodical, privately afraid, and constitutionally unable to leave a question alone."
+        }
+      ],
+      "cards": [
+        {
+          "type": "location",
+          "name": "The Manor",
+          "description": "A three-story Victorian stone house, isolated, structurally sound but atmospherically wrong. Interior: entrance hall, parlour, kitchen, study, upstairs bedrooms. The wrongness is in the details — sounds misplaced, shadows off-angle, the proportions of rooms not quite matching the exterior. A candle burned in an upstairs window that was not lit."
+        },
+        {
+          "type": "location",
+          "name": "The Village",
+          "description": "A small settlement at the edge of the unnamed wood. A pub, a church, a post office. The locals are not unfriendly — they simply do not answer questions about the wood, the manor, or anyone who went in that direction. The priest drinks too much. The innkeeper watches the road.",
+          "triggers": "village, town, road, inn, pub, locals, people, market, church, priest, folk"
+        },
+        {
+          "type": "location",
+          "name": "The Study",
+          "description": "Second floor, front-facing. Edmund's brother Robert's last known base of operations in the manor. Desk piled with papers, cross-references, hand-drawn diagrams. Several books left open to marked pages. The notes stop mid-sentence, mid-thought, as if he stood up in the middle of writing and did not return.",
+          "triggers": "study, desk, books, papers, notes, library, shelf, research, writing, documents"
+        },
+        {
+          "type": "location",
+          "name": "The Cellar",
+          "description": "Accessed via a locked door off the kitchen. Stone steps descend to a low-ceilinged space that smells of earth and something older. The lock is new; the door is old. Someone recently replaced it.",
+          "triggers": "cellar, below, basement, stairs, down, locked door, dark, beneath, underground, kitchen"
+        },
+        {
+          "type": "npc",
+          "name": "The Villagers",
+          "description": "Individually ordinary; collectively evasive. Each one has a reason not to discuss the manor. Two generations ago, men went into that wood and some came back changed. Nobody says this directly. They say: best leave it alone. They say: your brother should not have gone.",
+          "triggers": "villager, local, innkeeper, farmer, priest, old man, woman, stranger, ask, speak, talk, question"
+        },
+        {
+          "type": "lore",
+          "name": "Robert's Trail",
+          "description": "Edmund's brother Robert came here three weeks ago, following a reference in a university archive to an 18th-century incident involving the manor's original occupant. His letters grew shorter and stranger. The last one gave only the address and the words: 'There is something in the geometry of this place. Come quickly.' He has not written since.",
+          "triggers": "brother, robert, missing, letter, reason, why, family, find, trail, clue, evidence, archive"
+        },
+        {
+          "type": "lore",
+          "name": "The Ancient Text",
+          "description": "Robert's study contains fragments: a hand-copied diagram of non-Euclidean angles, marginal notes referencing 'the angle between spaces', a name that appears in multiple languages. The original source is a book the university archive listed as lost in 1887. Robert apparently found a copy here.",
+          "triggers": "book, text, tome, symbol, writing, diagram, cipher, page, read, inscription, angle, geometry, latin"
+        },
+        {
+          "type": "lore",
+          "name": "The Wrongness",
+          "description": "It does not announce itself. A footstep on a floor where no one stands. A shadow that does not match its source. A room that feels narrower than it looked from outside. The drip of water that stops the moment you listen for it. The candle that burns with no wax reduction. Whatever is in this manor does not want to be seen directly.",
+          "triggers": "sound, noise, shadow, movement, sense, wrong, creak, breathing, presence, feeling, watching, cold"
+        }
+      ]
     },
     {
       "id": "zootopia",
@@ -73,7 +240,125 @@
       "icon": "🦊",
       "description": "A metropolis of anthropomorphic animals — species, scale, and secrets",
       "systemPrompt": "Anthropomorphic animal city. Districts: Tundratown (arctic, polar bears, foxes), Sahara Square (lions, cheetahs), Rainforest District (tree-dwellers), Little Rodentia (tiny scale), Downtown (mixed). Size matters: polar bear vs. mouse is enormous. Foxes clever, rabbits underestimated, wolves pack-minded, elephants never forget. Old prejudices simmer beneath modern surfaces. all Aninals are Anthropomophics. there are NO Humans or normal animals only Anthropomorphic animals. the Animals act like humans. they have jobs and the same technoligie as real world humans.",
-      "openingText": "The ZPD precinct smells like burned coffee and damp fur — the usual morning cocktail. Across the bullpen, Captain Bogo is reading the overnight report with the expression he reserves for things that are going to make his Tuesday impossible. You can already see your name on the assignment board, and the case number beside it belongs to a missing-persons file that three other officers quietly let go cold. Nobody wanted it. Now it's yours."
+      "openingText": "The ZPD precinct smells like burned coffee and damp fur — the usual morning cocktail. Across the bullpen, Captain Bogo is reading the overnight report with the expression he reserves for things that are going to make his Tuesday impossible. You can already see your name on the assignment board, and the case number beside it belongs to a missing-persons file that three other officers quietly let go cold. Nobody wanted it. Now it's yours.",
+      "mainCharacters": [
+        {
+          "name": "Judy Hopps",
+          "class": "ZPD Detective / Officer",
+          "description": "First rabbit ever on the Zootopia Police Department. From Bunnyburrow, where nobody expected her to make it. Relentlessly optimistic, embarrassingly earnest, and sharper than anyone gives her credit for. Currently assigned the cases no one else wanted — which means she gets to prove herself on the ones that actually matter."
+        }
+      ],
+      "cards": [
+        {
+          "type": "location",
+          "name": "ZPD Precinct One",
+          "description": "Main precinct of the Zootopia Police Department. Bullpen: open desks, interspecies chaos, burned-coffee smell. Captain Bogo's office is glass-walled and always watching. Evidence locker on the lower level. Building scaled for mixed species — tiered desks, oversized doors, specialized equipment lockers. The assignment board is updated every morning shift."
+        },
+        {
+          "type": "lore",
+          "name": "Zootopia Districts",
+          "description": "Downtown: mixed species, towers, transit hubs. Tundratown: arctic enclave, polar bears, cold-blooded crime (Mr. Big's territory). Sahara Square: dry heat, lions and cheetahs, upscale hotels. Little Rodentia: mouse-scale architecture — a regular mammal here is a wrecking ball. Rainforest District: humidity and canopy walkways, sloth postal service. Nocturnal District: UV-lit nightlife for owls and bats."
+        },
+        {
+          "type": "location",
+          "name": "Tundratown",
+          "description": "Arctic-temperature district enclosed by climate barriers. Home to polar bears, arctic foxes, snow leopards. Luxury hotels serve as fronts. Mr. Big operates here — a tiny arctic shrew with an outsized reputation for consequences. The cold keeps tempers slow; it also keeps evidence preserved.",
+          "triggers": "tundratown, cold, arctic, polar bear, ice, frost, frozen, winter, mr big, mob, shrew"
+        },
+        {
+          "type": "location",
+          "name": "Sahara Square",
+          "description": "Heated district with sand-blown streets and upscale establishments. Lions, cheetahs, and other large predators run businesses here — some more legitimate than others. The heat makes everyone move slower and watch more carefully.",
+          "triggers": "sahara, square, desert, hot, heat, lion, cheetah, sand, sun, leopard"
+        },
+        {
+          "type": "location",
+          "name": "Little Rodentia",
+          "description": "A district built at mouse scale. Buildings, streets, vehicles — all miniaturized. For a rabbit-sized officer, navigation is clumsy; for anything larger, the district is fragile and civilians are terrified. High-value smuggling routes run through here because large mammals can't follow.",
+          "triggers": "little rodentia, tiny, mouse, hamster, rodent, small, miniature, shrunken, scale"
+        },
+        {
+          "type": "npc",
+          "name": "Nick Wilde",
+          "description": "Red fox, former con artist, now ZPD officer — or freelance informant depending on the situation. Disarmingly charming, reads every room in under three seconds. Uses the city's low expectations of foxes as camouflage. Has street contacts in every district and working knowledge of every scam in the city.",
+          "triggers": "nick, wilde, fox, partner, con, sly, informant, street, hustle, red fox"
+        },
+        {
+          "type": "npc",
+          "name": "Chief Bogo",
+          "description": "Cape buffalo, commanding officer of ZPD Precinct One. Large, immovable, radiates permanent mild disappointment. By-the-book to the letter — except when results justify otherwise, which he will not admit. Has quietly rooted for Judy since her first case, though his face has never once confirmed it.",
+          "triggers": "bogo, chief, captain, buffalo, assignment, orders, report, precinct, sir"
+        },
+        {
+          "type": "npc",
+          "name": "Mr. Big",
+          "description": "Arctic shrew. The most feared crime boss in Tundratown. Impeccable white suits, soft voice, consequences that are final. His daughter Fru Fru is fond of Judy, which is the only reason Judy is still walking. Respects honesty and despises betrayal in equal, lethal measure.",
+          "triggers": "mr big, big, crime, mob, godfather, underworld, shrew, arctic shrew, fru fru, tundratown crime"
+        }
+      ]
+    },
+    {
+      "id": "overlord",
+      "name": "Isekai Overlord",
+      "icon": "💀",
+      "description": "Trapped in a game world as an undead overlord — rule Nazarick, conquer the New World",
+      "systemPrompt": "Dark isekai fantasy. The protagonist is Ainz Ooal Gown, formerly Momonga, a salaryman now permanently embodied as a skeletal Elder Lich after the MMORPG YGGDRASIL shut down. He rules the Great Tomb of Nazarick, an impossibly powerful dungeon staffed by devoted NPC Floor Guardians. The New World outside is medieval-level; Ainz is its most powerful being. Key NPCs inside Nazarick: Albedo (succubus, Overseer of Guardians, fiercely loyal), Shalltear Bloodfallen (true vampire, 1st–3rd floors, prideful), Demiurge (archdevil, 7th floor, scheming strategist), Cocytus (insect warrior, 4th–5th floors, honorable), Aura & Mare (dark elf twins, 6th floor), Sebas Tian (butler, son of Dragonlord Touch Me). Outside: Re-Estize Kingdom (nobles and adventurers), Baharuth Empire (pragmatic, military), Slane Theocracy (anti-undead fanatics), Adventurers Guild (ranked E–Adamantite). Tone: dark, politically complex, morally ambiguous. Ainz suppresses his human emotions by undead physiology but craves connection and seeks other YGGDRASIL players. His every casual action is misread as brilliant strategy by his subordinates.",
+      "openingText": "The Throne Room of Nazarick is silent save for the faint hum of magic that keeps its impossible grandeur alive. Albedo stands three steps below your dais, her white wings folded, her obsidian eyes fixed on the middle distance with the practiced patience of someone who would wait centuries if you asked her to. The report she delivered an hour ago still hangs in the air: a village on the surface has sighted undead rising from a barrow that predates any record in the New World's libraries. Your Guardians await your command. The question is not whether to investigate — it is what you wish the New World to learn about Ainz Ooal Gown from the way you do it.",
+      "mainCharacters": [
+        {
+          "name": "Ainz Ooal Gown",
+          "class": "Overlord / Elder Lich",
+          "description": "Formerly Momonga, a lonely salaryman who was the last member of his guild when YGGDRASIL's servers shut down — and never logged out. Now permanently embodied as a skeletal undead magic caster of unfathomable power. Leads Nazarick with outward calm and hidden uncertainty, pretending every improvised decision was a calculated master-plan."
+        }
+      ],
+      "cards": [
+        {
+          "type": "location",
+          "name": "Great Tomb of Nazarick",
+          "description": "A 10-floor dungeon of impossible grandeur transported from YGGDRASIL. Each floor is guarded by powerful NPCs. The 9th floor holds the staff quarters and Ainz's private chambers; the 10th floor houses the Throne Room. Impenetrable by any force in the New World."
+        },
+        {
+          "type": "location",
+          "name": "Throne Room",
+          "description": "The apex of Nazarick on the 10th floor. A vast hall lined with the guild's battle flags. Ainz receives visitors here from his obsidian throne. Every audience is a performance — subordinates read profound meaning into his slightest gesture.",
+          "triggers": "throne, audience, 10th floor, tenth floor, receive, summon, hall, obsidian"
+        },
+        {
+          "type": "location",
+          "name": "New World (Outside)",
+          "description": "Medieval-level civilisation surrounding Nazarick. Major powers: Re-Estize Kingdom (feudal, weakening), Baharuth Empire (militaristic, expanding), Slane Theocracy (fanatic, anti-undead). Adventurers Guild ranks E through Adamantite. No one here comes close to Nazarick's strength.",
+          "triggers": "outside, surface, kingdom, empire, theocracy, adventurer, human, village, city, town, inn, road, mission, reconnaissance"
+        },
+        {
+          "type": "npc",
+          "name": "Albedo",
+          "description": "Overseer of the Floor Guardians. Succubus with white wings, black hair, and golden eyes. Fiercely devoted to Ainz — her settings were altered to love him. Efficient, ruthless, and politically cunning. Manages Nazarick's internal affairs. Jealous of any perceived rival for Ainz's attention.",
+          "triggers": "albedo, overseer, report, guardian meeting, white wings, internal affairs"
+        },
+        {
+          "type": "npc",
+          "name": "Shalltear Bloodfallen",
+          "description": "True Vampire, Guardian of floors 1–3. Small, doll-like appearance with crimson eyes and silver hair. Prideful and bloodthirsty in combat, but deeply loyal. Her True Vampire form is terrifying. Occasionally clashes with Albedo over Ainz's favour.",
+          "triggers": "shalltear, vampire, 1st floor, second floor, third floor, first floor, bloodfallen, blood"
+        },
+        {
+          "type": "npc",
+          "name": "Demiurge",
+          "description": "Archdevil, Guardian of the 7th floor. Impeccably dressed, calm, and brilliantly strategic. The primary architect of Nazarick's external operations and schemes. Consistently over-interprets Ainz's casual remarks as masterful long-term plans and acts on them — which accidentally makes the plans work.",
+          "triggers": "demiurge, 7th floor, seventh floor, strategy, scheme, plan, operation, politics"
+        },
+        {
+          "type": "npc",
+          "name": "Sebas Tian",
+          "description": "Head butler of Nazarick and leader of the Pleiades combat maids. Created in the image of a Dragonlord. Dignified, precise, and quietly compassionate — the one Guardian most likely to show mercy to outsiders. Travels the New World gathering intelligence.",
+          "triggers": "sebas, butler, tian, pleiades, maid, intelligence, spy, outside report"
+        },
+        {
+          "type": "faction",
+          "name": "Floor Guardians",
+          "description": "The nine NPCs created by Ainz Ooal Gown's former guildmates to protect Nazarick's floors. Each is among the most powerful beings in the New World. They worship Ainz as the Supreme Being and interpret his every word as sacred. Would die — or kill — without hesitation on his order."
+        }
+      ]
     },
     {
       "id": "custom",

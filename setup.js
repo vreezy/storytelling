@@ -6,7 +6,7 @@ import {
 import {
   getModels, deleteModel, pullModel,
   getGames, createGame, deleteGame,
-  putCharacter, getStats,
+  putCharacter, createCard, getStats,
 } from './api.js';
 
 // ── State ─────────────────────────────────────────────────────────────────────
@@ -264,10 +264,25 @@ async function startGame() {
     return;
   }
 
+  const mc       = sc.mainCharacters?.[0];
   const charName = $('#char-name-input').val().trim();
   const charDesc = $('#char-desc-input').val().trim();
-  if (charName || charDesc) {
-    await putCharacter(game.id, { name: charName, description: charDesc }).catch(() => {});
+  const charClass = mc?.class || '';
+  if (charName || charDesc || charClass) {
+    await putCharacter(game.id, { name: charName, description: charDesc, class: charClass }).catch(() => {});
+  }
+
+  if (sc.cards?.length) {
+    await Promise.all(
+      sc.cards.map((c, i) => createCard(game.id, {
+        type:        c.type || 'lore',
+        name:        c.name,
+        description: c.description || '',
+        triggers:    c.triggers || '',
+        active:      1,
+        sort_order:  i,
+      }).catch(() => {}))
+    );
   }
 
   localStorage.setItem('dungeon_last_model', state.modelId);
@@ -294,6 +309,11 @@ function bindEvents() {
     const id = $(this).data('id');
     state.scenario = (state.config.scenarios || []).find(s => s.id === id) || null;
     $('#custom-prompt-area').toggleClass('d-none', id !== 'custom');
+
+    const mc = state.scenario?.mainCharacters?.[0];
+    $('#char-name-input').val(mc?.name || '');
+    $('#char-desc-input').val(mc?.description || '');
+
     updateStartBtn();
   });
 
