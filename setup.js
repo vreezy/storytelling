@@ -247,16 +247,17 @@ async function startGame() {
   const scenarioPrompt = sc.id === 'custom'
     ? ($('#custom-prompt').val().trim() || 'You are a dungeon master for a text adventure.')
     : (sc.systemPrompt || '');
-  const systemPrompt = [globalPrompt, scenarioPrompt].filter(Boolean).join('\n\n');
 
   let game;
   try {
     game = await createGame({
       title,
-      scenario_id:   sc.id,
-      model_id:      state.modelId,
-      system_prompt: systemPrompt,
-      opening_text:  sc.openingText || '',
+      scenario_id:     sc.id,
+      model_id:        state.modelId,
+      system_prompt:   globalPrompt,
+      scenario_prompt: scenarioPrompt,
+      custom_prompt:   state.config.customSystemPrompt || '',
+      opening_text:    sc.openingText || '',
     });
   } catch (e) {
     showToast(`Could not create game: ${e.message}`, 'danger');

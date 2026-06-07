@@ -38,6 +38,17 @@ def init_db():
         schema = f.read()
     conn = get_db()
     conn.executescript(schema)
+    # Migrations for existing databases
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(games)").fetchall()}
+    if "num_predict" not in cols:
+        conn.execute("ALTER TABLE games ADD COLUMN num_predict INTEGER NOT NULL DEFAULT 150")
+        conn.commit()
+    if "scenario_prompt" not in cols:
+        conn.execute("ALTER TABLE games ADD COLUMN scenario_prompt TEXT")
+        conn.commit()
+    if "custom_prompt" not in cols:
+        conn.execute("ALTER TABLE games ADD COLUMN custom_prompt TEXT")
+        conn.commit()
     conn.close()
 
 
@@ -143,14 +154,16 @@ async def create_game(request: Request):
     body = await request.json()
     conn = get_db()
     cur = conn.execute(
-        """INSERT INTO games (title, description, scenario_id, model_id, system_prompt, opening_text)
-           VALUES (?,?,?,?,?,?)""",
+        """INSERT INTO games (title, description, scenario_id, model_id, system_prompt, scenario_prompt, custom_prompt, opening_text)
+           VALUES (?,?,?,?,?,?,?,?)""",
         (
             body.get("title", "Untitled Adventure"),
             body.get("description"),
             body.get("scenario_id"),
             body.get("model_id"),
             body.get("system_prompt"),
+            body.get("scenario_prompt"),
+            body.get("custom_prompt"),
             body.get("opening_text"),
         ),
     )
@@ -178,12 +191,14 @@ async def get_game(game_id: int):
 @app.put("/api/games/{game_id}")
 async def update_game(game_id: int, request: Request):
     body = await request.json()
+    allowed = ["title", "description", "num_predict", "system_prompt", "scenario_prompt", "custom_prompt", "opening_text"]
+    updates = {k: body[k] for k in allowed if k in body}
     conn = get_db()
-    conn.execute(
-        "UPDATE games SET title=?, description=? WHERE id=?",
-        (body.get("title"), body.get("description"), game_id),
-    )
-    conn.commit()
+    if updates:
+        cols = ", ".join(f"{k}=?" for k in updates)
+        vals = list(updates.values()) + [game_id]
+        conn.execute(f"UPDATE games SET {cols} WHERE id=?", vals)
+        conn.commit()
     row = conn.execute("SELECT * FROM games WHERE id=?", (game_id,)).fetchone()
     conn.close()
     if not row:
@@ -348,6 +363,21 @@ async def generate_turn(game_id: int, request: Request):
             yield json.dumps({"type": "error", "message": error_msg}) + "\n"
 
     return StreamingResponse(stream(), media_type="application/x-ndjson")
+
+
+@app.put("/api/games/{game_id}/turns/{turn_id}")
+async def update_turn(game_id: int, turn_id: int, request: Request):
+    body = await request.json()
+    allowed = ["raw_input", "response"]
+    updates = {k: body[k] for k in allowed if k in body}
+    conn = get_db()
+    if updates:
+        cols = ", ".join(f"{k}=?" for k in updates)
+        vals = list(updates.values()) + [turn_id, game_id]
+        conn.execute(f"UPDATE turns SET {cols} WHERE id=? AND game_id=?", vals)
+        conn.commit()
+    conn.close()
+    return {"ok": True}
 
 
 @app.delete("/api/games/{game_id}/turns/last")

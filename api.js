@@ -80,6 +80,16 @@ export async function deleteGame(id) {
   await fetch(`${_base}/api/games/${id}`, { method: 'DELETE' });
 }
 
+export async function putGame(gameId, data) {
+  const r = await fetch(`${_base}/api/games/${gameId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) throw new Error(`putGame failed: ${r.status}`);
+  return r.json();
+}
+
 // ── Character ─────────────────────────────────────────────────────────────────
 export async function getCharacter(gameId) {
   const r = await fetch(`${_base}/api/games/${gameId}/character`);
@@ -154,6 +164,16 @@ export async function streamTurn(gameId, payload, onToken, onDone) {
       }
     }
   }
+}
+
+export async function putTurn(gameId, turnId, data) {
+  const r = await fetch(`${_base}/api/games/${gameId}/turns/${turnId}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) throw new Error(`putTurn failed: ${r.status}`);
+  return r.json();
 }
 
 export async function undoTurn(gameId) {

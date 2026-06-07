@@ -36,6 +36,19 @@
   min-height: 2em;
 }
 
+/* Sidebar resizer handle — vertical strip between story and sidebar */
+#sidebar-resizer {
+  width: 5px;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: transparent;
+  transition: background .15s;
+}
+#sidebar-resizer:hover,
+#sidebar-resizer.dragging {
+  background: rgba(255,255,255,.2);
+}
+
 /* Streaming cursor */
 .streaming-cursor::after {
   content: "▋";

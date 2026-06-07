@@ -5,8 +5,11 @@ CREATE TABLE IF NOT EXISTS games (
     description    TEXT,
     scenario_id    TEXT,
     model_id       TEXT,
-    system_prompt  TEXT,                        -- resolved system prompt at game creation
+    system_prompt  TEXT,                        -- global DM system prompt
+    scenario_prompt TEXT,                       -- scenario-specific DM instructions
+    custom_prompt  TEXT,                        -- custom prompt extension (writing style, etc.)
     opening_text   TEXT,                        -- opening text shown at game start
+    num_predict    INTEGER  NOT NULL DEFAULT 150,  -- per-game output token limit
     created_at     DATETIME DEFAULT (datetime('now')),
     last_played_at DATETIME DEFAULT (datetime('now'))
 );

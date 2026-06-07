@@ -33,9 +33,20 @@ env.backends.onnx.wasm.wasmPaths = '/libs/'; // absoluter Pfad — NICHT './libs
 
 ## Seiten
 
-- `index.html` — Generelle Chat-App (Vanilla JS, eigenes CSS)
-- `dungeon.html` — StoryTelling Klon (Bootstrap 5 Dark Mode, jQuery, `dungeon.js`, `dungeon-style.css`)
+- `index.html` — Setup-Screen (Modellauswahl, Szenario, Charakter)
+- `game.html` — Spielscreen (Story, Aktionseingabe, Sidebar mit Tabs)
+- `api.js` — alle Backend-Fetch-Calls als ES-Module-Exports
+- `utils.js` — gemeinsame Hilfsfunktionen (showToast, pollHealth, renderTemplate, …)
+- `setup.js` — Logik für index.html
+- `game.js` — Logik für game.html
+- `style.css` — gemeinsames CSS
 - Szenarien und Generierungsparameter in `dungeon-config.json`
+
+## Datenbankschema-Dokumentation
+
+- Das aktuelle SQLite-Schema ist in [`datamodell.md`](datamodell.md) als Mermaid-ERD dokumentiert.
+- **Bei jeder Schemaänderung** (neue Spalten, neue Tabellen, geänderte Typen, neue Migrations in `main.py`) muss `datamodell.md` sofort aktualisiert werden.
+- Migrationen werden in `backend/main.py` → `init_db()` per `PRAGMA table_info` geprüft und als `ALTER TABLE` ausgeführt.
 
 ## Modell-Kategorien
 

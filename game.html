@@ -28,8 +28,8 @@
           <div id="context-bar" class="progress-bar bg-success" role="progressbar"
                style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
         </div>
-        <button id="char-toggle-btn" class="btn btn-sm btn-outline-secondary" title="Character Sheet">📋</button>
         <button id="debug-btn" class="btn btn-sm btn-outline-secondary" title="Prompt Debug Editor">🔧</button>
+        <button id="options-btn" class="btn btn-sm btn-outline-secondary" title="Options">⚙ Options</button>
       </div>
     </div>
 
@@ -88,32 +88,81 @@
           <div class="d-flex gap-2">
             <button id="undo-btn" class="btn btn-sm btn-outline-secondary" disabled>↩ Undo</button>
             <button id="retry-btn" class="btn btn-sm btn-outline-warning" disabled>↺ Retry</button>
+            <button id="continue-btn" class="btn btn-sm btn-outline-info" disabled>▶ Continue</button>
           </div>
         </div>
       </div>
 
-      <!-- Right: sidebar (Character + World Cards) -->
-      <div id="char-sheet" class="border-start d-flex flex-column flex-shrink-0" style="width: 260px; display: none !important;">
+      <!-- Resizer handle (between story and sidebar) -->
+      <div id="sidebar-resizer" style="display:none"></div>
+
+      <!-- Right: options sidebar -->
+      <div id="char-sheet" class="border-start flex-column flex-shrink-0"
+           style="width: 500px; display: none;">
 
         <!-- Tabs -->
-        <ul class="nav nav-tabs nav-fill flex-shrink-0 px-2 pt-2" id="sidebar-tabs">
+        <ul class="nav nav-tabs nav-fill flex-shrink-0 px-1 pt-2 flex-wrap" id="sidebar-tabs">
           <li class="nav-item">
-            <button class="nav-link active small py-1" id="tab-char-btn" data-tab="char">Character</button>
+            <button class="nav-link active small py-1 px-2" data-tab="char">Char</button>
           </li>
           <li class="nav-item">
-            <button class="nav-link small py-1" id="tab-world-btn" data-tab="world">World</button>
+            <button class="nav-link small py-1 px-2" data-tab="world">World</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link small py-1 px-2" data-tab="model">Model</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link small py-1 px-2" data-tab="scenario">Scenario</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link small py-1 px-2" data-tab="plot">Plot</button>
           </li>
         </ul>
 
         <!-- Character tab -->
         <div id="tab-char" class="flex-grow-1 overflow-auto p-3">
           <div id="char-fields"></div>
+          <button id="char-save-btn" class="btn btn-sm btn-outline-primary w-100 mt-2">Save</button>
         </div>
 
         <!-- World Cards tab -->
         <div id="tab-world" class="flex-grow-1 overflow-auto p-3 d-none">
           <button id="add-card-btn" class="btn btn-sm btn-outline-primary w-100 mb-3">+ Add Card</button>
           <div id="world-cards-list"></div>
+        </div>
+
+        <!-- Model tab -->
+        <div id="tab-model" class="flex-grow-1 overflow-auto p-3 d-none">
+          <label class="small text-secondary d-block mb-1">
+            Output tokens: <strong id="num-predict-val">150</strong>
+          </label>
+          <input type="range" class="form-range" id="num-predict-range"
+                 min="25" max="200" step="25" value="150">
+          <div class="d-flex justify-content-between text-secondary" style="font-size:0.7rem">
+            <span>25</span><span>100</span><span>150</span><span>200</span>
+          </div>
+          <button id="num-predict-reset" class="btn btn-sm btn-outline-secondary mt-3 d-none">
+            Reset to 150
+          </button>
+        </div>
+
+        <!-- Scenario tab -->
+        <div id="tab-scenario" class="flex-grow-1 overflow-auto p-3 d-none">
+          <label class="small text-secondary d-block mb-1">Scenario Prompt (world setting &amp; DM rules for this scenario)</label>
+          <textarea id="scenario-prompt-edit" class="form-control form-control-sm" rows="12"
+                    placeholder="You are set in a dark fantasy world…"></textarea>
+          <button id="scenario-save-btn" class="btn btn-sm btn-outline-primary mt-2 w-100">Save</button>
+        </div>
+
+        <!-- Plot tab -->
+        <div id="tab-plot" class="flex-grow-1 overflow-auto p-3 d-none">
+          <label class="small text-secondary d-block mb-1">Global System Prompt</label>
+          <textarea id="plot-prompt-edit" class="form-control form-control-sm mb-3" rows="6"
+                    placeholder="You are a creative storyteller…"></textarea>
+          <label class="small text-secondary d-block mb-1">Custom Prompt Extension</label>
+          <textarea id="custom-prompt-edit" class="form-control form-control-sm" rows="6"
+                    placeholder="Additional writing style and narrative rules…"></textarea>
+          <button id="plot-save-btn" class="btn btn-sm btn-outline-primary mt-2 w-100">Save</button>
         </div>
 
       </div>
@@ -139,6 +188,10 @@
               <label class="form-label fw-semibold small">Scenario Prompt</label>
               <textarea id="debug-scenario-prompt" class="form-control form-control-sm font-monospace" rows="5"></textarea>
             </div>
+          </div>
+          <div class="mb-3">
+            <label class="form-label fw-semibold small">Custom Prompt Extension</label>
+            <textarea id="debug-custom-prompt" class="form-control form-control-sm font-monospace" rows="3" readonly></textarea>
           </div>
           <div class="mb-3">
             <label class="form-label fw-semibold small">Character Context <span class="text-secondary">(computed)</span></label>
@@ -239,17 +292,6 @@
         <textarea class="form-control form-control-sm card-desc-input" rows="2" placeholder="Description…"></textarea>
       </div>
     </div>
-  </template>
-
-  <!-- Load game row (used in load modal in game.html if added later) -->
-  <template id="tmpl-game-row">
-    <tr style="cursor:pointer">
-      <td><strong data-bind="title"></strong></td>
-      <td data-bind="scenario"></td>
-      <td><small class="text-secondary" data-bind="model"></small></td>
-      <td class="text-end"><small class="text-secondary" data-bind="lastPlayed"></small></td>
-      <td><button class="btn btn-sm btn-outline-danger delete-game-btn">✕</button></td>
-    </tr>
   </template>
 
   <script src="libs/jquery.min.js"></script>

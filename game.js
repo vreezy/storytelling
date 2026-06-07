@@ -4,24 +4,31 @@ import {
   loadConfig, initApi, showToast, pollHealth, parseDate, renderTemplate,
 } from './utils.js';
 import {
-  getGame, getCharacter, getCards, putCharacter,
+  getGame, getCharacter, getCards, putCharacter, putGame,
   createCard, putCard, deleteCard,
-  streamTurn, undoTurn, getStats,
+  streamTurn, putTurn, undoTurn, getStats,
 } from './api.js';
+
+// ── Active segment edit cleanup handle ────────────────────────────────────────
+let _cancelSegEdit = null;
 
 // ── State ─────────────────────────────────────────────────────────────────────
 const state = {
-  config:      null,
-  gameId:      null,
-  modelId:     null,
-  scenario:    null,
-  systemPrompt:'',
-  character:   { name: '', description: '', class: '', stats: null, notes: '' },
-  cards:       [],
-  messages:    [],
-  segments:    [],
-  lastAction:  null,
-  generating:  false,
+  config:         null,
+  gameId:         null,
+  modelId:        null,
+  scenario:       null,
+  systemPrompt:   '',   // global DM prompt (games.system_prompt)
+  scenarioPrompt: '',   // scenario-specific DM instructions (games.scenario_prompt)
+  customPrompt:   '',   // custom prompt extension (games.custom_prompt)
+  character:      { name: '', description: '', class: '', stats: null, notes: '' },
+  cards:          [],
+  messages:       [],
+  segments:       [],
+  lastAction:     null,
+  generating:     false,
+  numPredict:     150,
+  sidebarOpen:    false,
 };
 
 // ── Bootstrap ─────────────────────────────────────────────────────────────────
@@ -59,9 +66,12 @@ $(async function () {
 async function loadGame(id) {
   const game = await getGame(id);
 
-  state.gameId       = game.id;
-  state.modelId      = game.model_id;
-  state.systemPrompt = game.system_prompt || '';
+  state.gameId          = game.id;
+  state.modelId         = game.model_id;
+  state.systemPrompt    = game.system_prompt || '';
+  state.scenarioPrompt  = game.scenario_prompt || '';
+  state.customPrompt    = game.custom_prompt || '';
+  state.numPredict      = game.num_predict ?? 150;
   state.character    = { name: '', description: '', class: '', stats: null, notes: '' };
   state.messages     = [];
   state.segments     = [];
@@ -84,18 +94,18 @@ async function loadGame(id) {
   state.segments = [];
 
   if (game.opening_text) {
-    appendSegment(game.opening_text + '\n\n', 'narrative');
+    appendSegment(game.opening_text + '\n\n', 'narrative', 'game', 'opening_text');
     state.messages.push({ role: 'assistant', content: game.opening_text });
   }
 
   for (const t of game.turns) {
     if (t.raw_input) {
       const playerLine = buildPlayerActionText(t.raw_input, t.action_type);
-      appendSegment(playerLine, 'action');
+      appendSegment(playerLine, 'action', t.id, 'raw_input');
       state.messages.push({ role: 'user', content: playerLine });
     }
     if (t.response) {
-      appendSegment(t.response + '\n\n', 'narrative');
+      appendSegment(t.response + '\n\n', 'narrative', t.id, 'response');
       state.messages.push({ role: 'assistant', content: t.response });
     }
   }
@@ -105,8 +115,21 @@ async function loadGame(id) {
 
   updateContextBar();
   renderCharSidebar();
+
+  // Populate sidebar tab fields
+  $('#num-predict-range').val(state.numPredict);
+  $('#num-predict-val').text(state.numPredict);
+  $('#num-predict-reset').toggleClass('d-none', state.numPredict === 150);
+  $('#scenario-prompt-edit').val(state.scenarioPrompt);
+  $('#plot-prompt-edit').val(state.systemPrompt);
+  $('#custom-prompt-edit').val(state.customPrompt);
+
+  // Restore sidebar width (default 500px set in HTML)
+  const savedW = localStorage.getItem('sidebar_width');
+  if (savedW) $('#char-sheet').css('width', parseInt(savedW) + 'px');
+
   $('#debug-panel').removeClass('d-none');
-  $('#send-btn, #action-input').prop('disabled', false);
+  $('#send-btn, #action-input, #continue-btn').prop('disabled', false);
   $('#action-input').trigger('focus');
   history.replaceState(null, '', `?id=${id}`);
   const el = document.getElementById('story-text');
@@ -124,34 +147,48 @@ async function sendAction() {
   await generateContinuation(text, type);
 }
 
+// ── Continue (no player input) ────────────────────────────────────────────────
+async function continueStory() {
+  if (state.generating || !state.gameId) return;
+  state.lastAction = null;
+  await generateContinuation(null, 'continue');
+}
+
 // ── Generate continuation ─────────────────────────────────────────────────────
 async function generateContinuation(actionText, actionType) {
   state.generating = true;
-  $('#send-btn, #undo-btn, #retry-btn').prop('disabled', true);
+  $('#send-btn, #undo-btn, #retry-btn, #continue-btn').prop('disabled', true);
 
-  const playerLine = buildPlayerActionText(actionText, actionType);
-  appendSegment(playerLine, 'action');
+  const isContinue = actionText === null;
+  let playerLine   = null;
+
+  let playerSegIdx = null;
+  if (!isContinue) {
+    playerLine = buildPlayerActionText(actionText, actionType);
+    playerSegIdx = state.segments.length;
+    appendSegment(playerLine, 'action');
+  }
 
   const messages = buildMessages(actionType, playerLine);
   const gen      = state.config.generation || {};
 
   console.group('%c[Dungeon] Turn', 'color:#7ecfff;font-weight:bold');
-  console.log('%cModel:', 'color:#aaa', state.modelId);
-  console.log('%cAction:', 'color:#aaa', actionType, actionText);
+  console.log('%cMode:', 'color:#aaa', isContinue ? 'continue' : actionType);
   console.log('%cMessages (' + messages.length + '):', 'color:#aaa', messages);
   console.groupEnd();
 
   const streamSpan = $('<span class="narrative streaming-cursor"></span>').appendTo('#story-text');
   let response = '';
+  let doneTurnId = null;
 
   try {
     const payload = {
       action_type:    actionType,
-      raw_input:      actionText,
+      raw_input:      actionText ?? '',
       messages,
       model_id:       state.modelId,
       temperature:    gen.temperature ?? 0.75,
-      num_predict:    gen.maxNewTokens ?? 200,
+      num_predict:    state.numPredict,
       repeat_penalty: gen.repetitionPenalty ?? 1.1,
       num_ctx:        gen.numCtx ?? 4096,
     };
@@ -166,10 +203,11 @@ async function generateContinuation(actionText, actionType) {
         el.scrollTop = el.scrollHeight;
       },
       (doneMsg) => {
+        doneTurnId = doneMsg.turn_id ?? null;
         updateDebugPanel(doneMsg, messages, {
           model_id:       state.modelId,
           temperature:    gen.temperature,
-          num_predict:    gen.maxNewTokens,
+          num_predict:    state.numPredict,
           repeat_penalty: gen.repetitionPenalty,
         });
       },
@@ -177,9 +215,16 @@ async function generateContinuation(actionText, actionType) {
 
     const finalText = (response || '(No response generated)') + '\n\n';
     streamSpan.remove();
-    appendSegment(finalText, 'narrative');
+    // Backfill turnId onto the player segment now that we know it
+    if (doneTurnId !== null && playerSegIdx !== null) {
+      state.segments[playerSegIdx].turnId = doneTurnId;
+      state.segments[playerSegIdx].field  = 'raw_input';
+    }
+    appendSegment(finalText, 'narrative', doneTurnId, 'response');
 
-    state.messages.push({ role: 'user',      content: playerLine });
+    if (!isContinue) {
+      state.messages.push({ role: 'user', content: playerLine });
+    }
     state.messages.push({ role: 'assistant', content: response });
     const maxMsg = state.config.contextMaxMessages || 20;
     if (state.messages.length > maxMsg) state.messages = state.messages.slice(-maxMsg);
@@ -190,7 +235,7 @@ async function generateContinuation(actionText, actionType) {
     showToast(`Generation error: ${err.message}`, 'danger');
   } finally {
     state.generating = false;
-    $('#send-btn, #retry-btn, #undo-btn').prop('disabled', false);
+    $('#send-btn, #retry-btn, #undo-btn, #continue-btn').prop('disabled', false);
     $('#action-input').trigger('focus');
   }
 }
@@ -198,9 +243,13 @@ async function generateContinuation(actionText, actionType) {
 // ── Message builder (shared by generateContinuation & debug preview) ──────────
 function buildMessages(actionType, playerLine) {
   const charCtx      = buildCharacterContext();
-  const actionPrompt = state.config.actionPrompts?.[actionType] || '';
+  const actionPrompt = actionType === 'continue'
+    ? ''
+    : (state.config.actionPrompts?.[actionType] || '');
   const cardsCtx     = buildCardsContext();
-  let sysContent = [state.systemPrompt, charCtx, cardsCtx, actionPrompt].filter(Boolean).join('\n\n');
+  let sysContent = [
+    state.systemPrompt, state.scenarioPrompt, state.customPrompt, charCtx, cardsCtx, actionPrompt,
+  ].filter(Boolean).join('\n\n');
 
   let history = [...state.messages];
   if (history.length && history[0].role === 'assistant') {
@@ -208,11 +257,16 @@ function buildMessages(actionType, playerLine) {
     history = history.slice(1);
   }
 
-  return [
+  const msgs = [
     { role: 'system', content: sysContent },
     ...history,
-    { role: 'user', content: playerLine },
   ];
+
+  if (playerLine) {
+    msgs.push({ role: 'user', content: playerLine });
+  }
+
+  return msgs;
 }
 
 // ── Undo ──────────────────────────────────────────────────────────────────────
@@ -236,9 +290,9 @@ async function retry() {
 }
 
 // ── Story display ─────────────────────────────────────────────────────────────
-function appendSegment(text, cssClass) {
-  state.segments.push({ text, cssClass });
-  const idx  = state.segments.length - 1;
+function appendSegment(text, cssClass, turnId = null, field = null) {
+  state.segments.push({ text, cssClass, turnId, field });
+  const idx   = state.segments.length - 1;
   const $span = $('<span></span>').addClass(cssClass).text(text);
   attachSegmentEdit($span, idx);
   $('#story-text').append($span);
@@ -248,6 +302,7 @@ function appendSegment(text, cssClass) {
 }
 
 function rebuildStoryDisplay() {
+  if (_cancelSegEdit) _cancelSegEdit();
   $('#story-text').empty();
   state.segments.forEach((seg, i) => {
     const $span = $('<span></span>').addClass(seg.cssClass).text(seg.text);
@@ -261,18 +316,50 @@ function rebuildStoryDisplay() {
 function attachSegmentEdit($span, idx) {
   $span.on('click', function () {
     if (state.generating) return;
-    const $ta = $('<textarea class="segment-edit"></textarea>')
-      .val(state.segments[idx].text)
-      .on('keydown', function (e) {
-        if (e.key === 'Escape') $ta.replaceWith($span);
-      })
-      .on('blur', function () {
+
+    // Close any other open edit first
+    if (_cancelSegEdit) _cancelSegEdit();
+
+    let done = false;
+
+    const finish = (doSave) => {
+      if (done) return;
+      done = true;
+      _cancelSegEdit = null;
+      $(document).off('mousedown.segEdit');
+      if (doSave) {
         const newText = $ta.val();
         state.segments[idx].text = newText;
         $span.text(newText);
-        $ta.replaceWith($span);
         rebuildMessagesFromSegments();
+        // Persist to DB
+        const seg = state.segments[idx];
+        if (seg.turnId === 'game') {
+          putGame(state.gameId, { opening_text: newText.trimEnd() }).catch(() => {});
+        } else if (seg.turnId) {
+          putTurn(state.gameId, seg.turnId, { [seg.field]: newText.trimEnd() }).catch(() => {});
+        }
+      }
+      $ta.replaceWith($span);
+    };
+
+    // Exposed so rebuildStoryDisplay/undo can flush the edit before wiping DOM
+    _cancelSegEdit = () => finish(true);
+
+    const $ta = $('<textarea class="segment-edit"></textarea>')
+      .val(state.segments[idx].text)
+      .on('keydown', function (e) {
+        if (e.key === 'Escape') finish(false);
       });
+
+    // Save when the user clicks anywhere outside the textarea.
+    // Using mousedown (not blur) avoids false triggers from sidebar focus management.
+    $(document).on('mousedown.segEdit', function (e) {
+      if (!$(e.target).is($ta) && !$.contains($ta[0], e.target)) {
+        finish(true);
+      }
+    });
+
     $span.replaceWith($ta);
     $ta.css('width', $('#story-text').width() + 'px');
     $ta[0].style.height = $ta[0].scrollHeight + 'px';
@@ -321,8 +408,9 @@ function updateDebugPanel(doneMsg, messages, params) {
 // ── Debug modal ───────────────────────────────────────────────────────────────
 function openDebugModal() {
   const ap = state.config.actionPrompts || {};
-  $('#debug-global-prompt').val(state.config.systemPrompt || '');
-  $('#debug-scenario-prompt').val(state.scenario?.systemPrompt || '');
+  $('#debug-global-prompt').val(state.systemPrompt || '');
+  $('#debug-scenario-prompt').val(state.scenarioPrompt || '');
+  $('#debug-custom-prompt').val(state.customPrompt || '');
   $('#debug-char-context').val(buildCharacterContext());
   $('#debug-action-do').val(ap.do || '');
   $('#debug-action-say').val(ap.say || '');
@@ -337,7 +425,6 @@ function openDebugModal() {
   const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('debug-modal'));
   modal.show();
 
-  // Live-update next prompt when action prompts are edited
   const $modal = $('#debug-modal');
   $modal.off('input.nextprompt').on(
     'input.nextprompt',
@@ -359,6 +446,7 @@ function updateDebugCombined() {
   const parts = [
     $('#debug-global-prompt').val(),
     $('#debug-scenario-prompt').val(),
+    state.customPrompt || '',
     $('#debug-char-context').val(),
     ap[activeAction] || '',
   ].filter(s => s.trim());
@@ -370,13 +458,12 @@ function buildNextPromptPreview() {
   const actionType = $('#action-type').val() || 'do';
   const playerLine = buildPlayerActionText(actionText, actionType);
 
-  // Use live values from debug modal inputs if changed
-  const origSystem   = state.config.systemPrompt;
-  const origScenario = state.scenario?.systemPrompt;
+  const origSystem   = state.systemPrompt;
+  const origScenario = state.scenarioPrompt;
   const origAp       = { ...state.config.actionPrompts };
 
-  state.config.systemPrompt = $('#debug-global-prompt').val();
-  if (state.scenario) state.scenario.systemPrompt = $('#debug-scenario-prompt').val();
+  state.systemPrompt   = $('#debug-global-prompt').val();
+  state.scenarioPrompt = $('#debug-scenario-prompt').val();
   state.config.actionPrompts = {
     do:    $('#debug-action-do').val(),
     say:   $('#debug-action-say').val(),
@@ -385,19 +472,13 @@ function buildNextPromptPreview() {
 
   const messages = buildMessages(actionType, playerLine);
 
-  // Restore
-  state.config.systemPrompt = origSystem;
-  if (state.scenario) state.scenario.systemPrompt = origScenario;
+  state.systemPrompt   = origSystem;
+  state.scenarioPrompt = origScenario;
   state.config.actionPrompts = origAp;
 
   $('#debug-next-prompt').val(JSON.stringify(messages, null, 2));
   $('#debug-next-action-type').text(actionType);
   $('#debug-action-preview').val($('#action-input').val());
-}
-
-// ── Stats modal ───────────────────────────────────────────────────────────────
-async function openStatsModal() {
-  // Stats modal is on index.html; this is a no-op placeholder if ever needed here
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -429,7 +510,7 @@ function buildCardsContext() {
 
 // ── Character sidebar ─────────────────────────────────────────────────────────
 function renderCharSidebar() {
-  const c    = state.character;
+  const c     = state.character;
   const $tmpl = renderTemplate('tmpl-char-fields');
   $('#char-name-edit', $tmpl).val(c.name || '');
   $('#char-class-edit', $tmpl).val(c.class || '');
@@ -446,14 +527,13 @@ function renderCharSidebar() {
       notes:       $('#char-notes-edit').val().trim(),
     };
     await putCharacter(state.gameId, state.character).catch(() => {});
+    showToast('Character saved.', 'success');
   }
 
-  $('#char-name-edit, #char-class-edit, #char-desc-edit, #char-notes-edit').on('blur', saveCharacter);
+  $('#char-save-btn').on('click', saveCharacter);
 }
 
 // ── World Cards ───────────────────────────────────────────────────────────────
-const CARD_TYPES = ['location', 'npc', 'item', 'faction', 'lore'];
-
 function renderWorldCards() {
   const $list = $('#world-cards-list').empty();
   if (!state.cards.length) {
@@ -501,25 +581,67 @@ function buildCardEl(card) {
 
 // ── Event bindings ────────────────────────────────────────────────────────────
 function bindEvents() {
-  $('#send-btn').on('click', sendAction);
-  $('#undo-btn').on('click', undo);
-  $('#retry-btn').on('click', retry);
-  $('#debug-btn').on('click', openDebugModal);
-
-  $('#char-toggle-btn').on('click', function () {
-    const $sheet = $('#char-sheet');
-    $sheet.css('display') === 'none' ? $sheet.css('display', 'flex') : $sheet.hide();
+  // Options sidebar toggle
+  $('#options-btn').on('click', () => {
+    state.sidebarOpen = !state.sidebarOpen;
+    const display = state.sidebarOpen ? 'flex' : 'none';
+    $('#char-sheet').css('display', display);
+    $('#sidebar-resizer').css('display', display);
   });
 
+  // Sidebar tabs
   $('#sidebar-tabs').on('click', '[data-tab]', function () {
     const tab = $(this).data('tab');
     $('#sidebar-tabs .nav-link').removeClass('active');
     $(this).addClass('active');
-    $('#tab-char, #tab-world').addClass('d-none');
+    $('#tab-char, #tab-world, #tab-model, #tab-scenario, #tab-plot').addClass('d-none');
     $(`#tab-${tab}`).removeClass('d-none');
     if (tab === 'world') renderWorldCards();
   });
 
+  // Model tab: output token range
+  $('#num-predict-range').on('input', function () {
+    const v = +$(this).val();
+    state.numPredict = v;
+    $('#num-predict-val').text(v);
+    $('#num-predict-reset').toggleClass('d-none', v === 150);
+    putGame(state.gameId, { num_predict: v }).catch(() => {});
+  });
+  $('#num-predict-reset').on('click', () => {
+    state.numPredict = 150;
+    $('#num-predict-range').val(150);
+    $('#num-predict-val').text(150);
+    $('#num-predict-reset').addClass('d-none');
+    putGame(state.gameId, { num_predict: 150 }).catch(() => {});
+  });
+
+  // Scenario tab: scenario-specific DM prompt
+  $('#scenario-save-btn').on('click', async () => {
+    const text = $('#scenario-prompt-edit').val();
+    try {
+      await putGame(state.gameId, { scenario_prompt: text });
+      state.scenarioPrompt = text;
+      showToast('Scenario prompt saved.', 'success');
+    } catch {
+      showToast('Failed to save scenario prompt.', 'danger');
+    }
+  });
+
+  // Plot tab: system prompt + custom prompt
+  $('#plot-save-btn').on('click', async () => {
+    const sysText    = $('#plot-prompt-edit').val();
+    const customText = $('#custom-prompt-edit').val();
+    try {
+      await putGame(state.gameId, { system_prompt: sysText, custom_prompt: customText });
+      state.systemPrompt = sysText;
+      state.customPrompt = customText;
+      showToast('Prompts saved.', 'success');
+    } catch {
+      showToast('Failed to save prompts.', 'danger');
+    }
+  });
+
+  // Add world card
   $('#add-card-btn').on('click', async function () {
     const card = await createCard(state.gameId, {
       type: 'location', name: '', description: '', active: 1,
@@ -531,16 +653,24 @@ function bindEvents() {
     $('#world-cards-list').find('.card-name-input').last().trigger('focus');
   });
 
+  // Action buttons
+  $('#send-btn').on('click', sendAction);
+  $('#undo-btn').on('click', undo);
+  $('#retry-btn').on('click', retry);
+  $('#continue-btn').on('click', continueStory);
+  $('#debug-btn').on('click', openDebugModal);
+
+  // Enter to send
   $('#action-input').on('keydown', function (e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAction(); }
   });
 
   // Debug modal — live prompt editing syncs to state
   $('#debug-global-prompt').on('input', function () {
-    state.config.systemPrompt = $(this).val(); updateDebugCombined();
+    state.systemPrompt = $(this).val(); updateDebugCombined();
   });
   $('#debug-scenario-prompt').on('input', function () {
-    if (state.scenario) state.scenario.systemPrompt = $(this).val(); updateDebugCombined();
+    state.scenarioPrompt = $(this).val(); updateDebugCombined();
   });
   $('#debug-action-do').on('input', function () {
     state.config.actionPrompts.do = $(this).val(); updateDebugCombined();
@@ -550,5 +680,26 @@ function bindEvents() {
   });
   $('#debug-action-story').on('input', function () {
     state.config.actionPrompts.story = $(this).val(); updateDebugCombined();
+  });
+
+  // Resizable sidebar
+  let resizing = false, startX = 0, startW = 0;
+  $('#sidebar-resizer').on('mousedown', function (e) {
+    resizing = true;
+    startX   = e.clientX;
+    startW   = $('#char-sheet').width();
+    $('#sidebar-resizer').addClass('dragging');
+    e.preventDefault();
+  });
+  $(document).on('mousemove', function (e) {
+    if (!resizing) return;
+    const newW = Math.max(160, Math.min(600, startW - (e.clientX - startX)));
+    $('#char-sheet').css('width', newW + 'px');
+  });
+  $(document).on('mouseup', function () {
+    if (!resizing) return;
+    resizing = false;
+    $('#sidebar-resizer').removeClass('dragging');
+    localStorage.setItem('sidebar_width', $('#char-sheet').width());
   });
 }
