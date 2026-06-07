@@ -1,0 +1,44 @@
+/* Scenario card interaction */
+.scenario-card { cursor: pointer; transition: border-color .15s, background-color .15s; }
+.scenario-card:hover { background-color: rgba(255,255,255,.04); }
+.scenario-card.active { border-color: var(--bs-primary) !important; }
+
+/* Story text panel */
+#story-text {
+  font-size: 1rem;
+  line-height: 1.8;
+  white-space: pre-wrap;
+}
+
+/* Narrative text — default color */
+.narrative { color: var(--bs-body-color); }
+
+/* Player action lines */
+.action {
+  color: #5aba6e;
+  font-style: italic;
+}
+
+/* Editable segments */
+.narrative, .action { cursor: text; }
+.narrative:hover, .action:hover { background: rgba(255,255,255,.04); border-radius: 3px; }
+.segment-edit {
+  display: block;
+  background: rgba(255,255,255,.06);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 3px;
+  color: inherit;
+  font: inherit;
+  line-height: inherit;
+  white-space: pre-wrap;
+  resize: vertical;
+  padding: 2px 4px;
+  min-height: 2em;
+}
+
+/* Streaming cursor */
+.streaming-cursor::after {
+  content: "▋";
+  animation: blink 1s step-end infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }

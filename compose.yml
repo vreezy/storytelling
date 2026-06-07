@@ -1,0 +1,30 @@
+services:
+
+  # FastAPI backend — REST API + static file server
+  # Start with: podman compose up backend
+  backend:
+    image: python:3.11-slim
+    volumes:
+      - .:/app
+      - db-data:/app/data
+    working_dir: /app/backend
+    command: >
+      sh -c "pip install -q fastapi uvicorn httpx && sh /app/backend/start.sh"
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_PATH=/app/data/dungeon.db
+      - OLLAMA_HOST=http://172.24.0.1:11434
+    restart: unless-stopped
+
+  # One-shot: downloads Bootstrap + jQuery into libs/
+  # Run once with: podman compose run --rm downloader
+  downloader:
+    image: python:3.11-slim
+    volumes:
+      - .:/downloads
+    working_dir: /downloads
+    command: python download.py --libs-only
+
+volumes:
+  db-data:

@@ -1,0 +1,72 @@
+{
+  "backendUrl": "http://localhost:8000",
+  "defaultModel": "mistral:7b-instruct",
+  "contextMaxMessages": 15,
+
+  "availableModels": [
+    { "id": "smollm2:135m",                                                  "name": "SmolLM2 135M Instruct",      "sizeMb": 270,  "nsfw": false },
+    { "id": "smollm2:360m",                                                  "name": "SmolLM2 360M Instruct",      "sizeMb": 230,  "nsfw": false },
+    { "id": "smollm2:1.7b",                                                  "name": "SmolLM2 1.7B Instruct",      "sizeMb": 1000, "nsfw": false },
+    { "id": "mistral:7b-instruct",                                           "name": "Mistral 7B Instruct",        "sizeMb": 4100, "nsfw": false },
+    { "id": "hf.co/TheBloke/Chronomaid-Storytelling-13B-GGUF:Q4_K_M",       "name": "Chronomaid 13B Storytelling","sizeMb": 7900, "nsfw": true  },
+    { "id": "dolphin-mistral:7b",                                            "name": "Dolphin Mistral 7B",         "sizeMb": 4100, "nsfw": true  }
+  ],
+
+  "systemPrompt": "You are a creative storyteller writing a collaborative story. Write exactly two short paragraphs in second person (\"You\"). React to what the protagonist just did. Show atmosphere and consequence. No questions. No game mechanics. Advance the plot. Stop after two paragraphs.",
+
+  "scenarios": [
+    {
+      "id": "fantasy",
+      "name": "Dungeons & Dragons",
+      "icon": "⚔️",
+      "description": "The Forgotten Realms — races, classes, monsters and ancient magic",
+      "systemPrompt": "Forgotten Realms, D&D world. Races: elves, dwarves, tieflings, dragonborn, halflings, half-orcs. Classes: rogues, wizards, paladins, clerics, bards, druids. Monsters: dragons, beholders, undead, mind flayers, goblins. Name spells and weapons. Dark dungeons, smoky taverns, dangerous wilderness. Magic has a cost.",
+      "openingText": "The torchlight gutters as you descend the last worn step into the dungeon beneath Neverwinter. Ahead, the passage forks — from the left comes a rhythmic dripping and the stench of something long dead; from the right, a faint amber glow and the unmistakable hiss of draconic speech. Your hand finds the hilt of your weapon before you even decide."
+    },
+    {
+      "id": "scifi",
+      "name": "Galaxy Rangers",
+      "icon": "🚀",
+      "description": "Space cowboys, alien frontiers and the Queen of the Crown",
+      "systemPrompt": "Year 2086, Galaxy Rangers. Space cowboys on the galactic frontier. BETA Mountain, ship Ranger One. Planets: peaceful Kirwin, outlaw Tortuna. Villain: Queen of the Crown, her psychocrystals and Crown Agents. Rangers: Foxx (cybernetic arm), Doc (robot implant), Niko (psychic), Goose (Supertrooper). Bold 80s space-western: vivid, pulpy, high stakes.",
+      "openingText": "Ranger One drops out of hyperspace above Tortuna, its shields already cycling up. Below, the red-dust hellhole sprawls under a bruised sky — somewhere down there, a Crown slaver ship is running a manifest that doesn't add up, and three Kiwi colonists from Kirwin haven't been heard from in a week. BETA Mountain is watching your telemetry. The call is yours."
+    },
+    {
+      "id": "horror",
+      "name": "Cosmic Horror",
+      "icon": "🕯️",
+      "description": "Lovecraftian dread, the unknown, and truths that break minds",
+      "systemPrompt": "Cosmic horror. Dread through absence: wrong sounds, mismatched shadows, creeping wrongness. The threat is never fully seen. Build tension slowly. Horror is the moment you understand something you cannot un-know. Restraint over gore. Lovecraftian atmosphere.",
+      "openingText": "The old manor stands exactly where your brother's last letter said it would — three miles past the collapsed mill, through a wood that the locals refuse to name. It is the fourth night of your search, and the fog has followed you since the village. Inside, a single candle burns in an upstairs window. You did not see it lit."
+    },
+    {
+      "id": "zootopia",
+      "name": "Animal City",
+      "icon": "🦊",
+      "description": "A metropolis of anthropomorphic animals — species, scale, and secrets",
+      "systemPrompt": "Anthropomorphic animal city. Districts: Tundratown (arctic, polar bears, foxes), Sahara Square (lions, cheetahs), Rainforest District (tree-dwellers), Little Rodentia (tiny scale), Downtown (mixed). Size matters: polar bear vs. mouse is enormous. Foxes clever, rabbits underestimated, wolves pack-minded, elephants never forget. Old prejudices simmer beneath modern surfaces.",
+      "openingText": "The ZPD precinct smells like burned coffee and damp fur — the usual morning cocktail. Across the bullpen, Captain Bogo is reading the overnight report with the expression he reserves for things that are going to make his Tuesday impossible. You can already see your name on the assignment board, and the case number beside it belongs to a missing-persons file that three other officers quietly let go cold. Nobody wanted it. Now it's yours."
+    },
+    {
+      "id": "custom",
+      "name": "Custom World",
+      "icon": "✍️",
+      "description": "Create your own scenario",
+      "systemPrompt": null,
+      "openingText": null
+    }
+  ],
+
+  "actionPrompts": {
+    "do":    "The protagonist acts. Show the immediate physical consequence.",
+    "say":   "The protagonist speaks. Show how the world reacts to their words.",
+    "story": "The narrator steers the plot. Follow this new direction naturally."
+  },
+
+  "generation": {
+    "maxNewTokens":    150,
+    "temperature":     0.85,
+    "repetitionPenalty": 1.35,
+    "numCtx":          4096
+  }
+}

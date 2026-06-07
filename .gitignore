@@ -1,0 +1,7 @@
+.env
+NUL
+models/
+libs/
+data/
+__pycache__/
+*.pyc
