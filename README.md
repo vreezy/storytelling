@@ -107,6 +107,45 @@ The **🔧 Prompt Debug Editor** button (top-right of the game screen) lets you 
 
 ---
 
+## Prompt Analysis (Automated Playthrough)
+
+The `tester` service plays 30 scripted turns automatically and writes a Markdown analysis report to `tests/reports/`. Use it to evaluate prompt quality and spot issues like short responses, repetition, or context overflow.
+
+**Start the backend first, then run:**
+
+```powershell
+podman compose run --rm tester
+```
+
+The report appears in `tests/reports/analysis_YYYYMMDD_HHMMSS.md` on the host.
+
+### What the report covers
+
+| Section | What it measures |
+|---------|-----------------|
+| Response Length | avg/min/max tokens per turn; flags short (<30) or truncated responses |
+| Generation Speed | tok/s per turn with a spark-line chart |
+| Prompt Token Growth | how the prompt grows over 30 turns; overflow estimate |
+| Repetition Detection | trigram overlap between consecutive responses |
+| Action Responsiveness | avg response length broken down by `do` / `say` / `story` |
+| Format Compliance | mid-sentence starts, trailing `...`, OOC brackets, refusals |
+| Recommendations | plain-English suggestions for prompt changes |
+
+### Customising the run
+
+Edit `tests/playthrough_config.json` to change the model, scenario, generation parameters, or the 30 player actions.
+
+```json
+{
+  "model_id": "smollm2:135m",
+  "scenario_id": "fantasy",
+  "generation": { "temperature": 0.75, "num_predict": 150 },
+  "actions": [ ... ]
+}
+```
+
+---
+
 ## Stats
 
 Click **Stats** on the setup screen to see aggregate performance per model:

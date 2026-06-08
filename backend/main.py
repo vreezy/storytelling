@@ -49,6 +49,9 @@ def init_db():
     if "custom_prompt" not in cols:
         conn.execute("ALTER TABLE games ADD COLUMN custom_prompt TEXT")
         conn.commit()
+    if "story_summary" not in cols:
+        conn.execute("ALTER TABLE games ADD COLUMN story_summary TEXT")
+        conn.commit()
     card_cols = {r[1] for r in conn.execute("PRAGMA table_info(world_cards)").fetchall()}
     if "triggers" not in card_cols:
         conn.execute("ALTER TABLE world_cards ADD COLUMN triggers TEXT")
@@ -195,7 +198,7 @@ async def get_game(game_id: int):
 @app.put("/api/games/{game_id}")
 async def update_game(game_id: int, request: Request):
     body = await request.json()
-    allowed = ["title", "description", "num_predict", "system_prompt", "scenario_prompt", "custom_prompt", "opening_text"]
+    allowed = ["title", "description", "num_predict", "system_prompt", "scenario_prompt", "custom_prompt", "opening_text", "story_summary"]
     updates = {k: body[k] for k in allowed if k in body}
     conn = get_db()
     if updates:
@@ -217,6 +220,53 @@ async def delete_game(game_id: int):
     conn.commit()
     conn.close()
     return {"ok": True}
+
+
+@app.post("/api/games/{game_id}/summarize")
+async def summarize_game(game_id: int, request: Request):
+    body = await request.json()
+    messages_to_summarize = body.get("messages", [])
+    existing_summary      = body.get("existing_summary", "")
+
+    conn = get_db()
+    game = conn.execute("SELECT * FROM games WHERE id=?", (game_id,)).fetchone()
+    conn.close()
+    if not game:
+        raise HTTPException(404, "Game not found")
+
+    turns_text = "\n".join(
+        f"{'Player' if m['role'] == 'user' else 'Story'}: {m['content']}"
+        for m in messages_to_summarize
+    )
+    if existing_summary:
+        turns_text = f"Previous summary: {existing_summary}\n\nNew events:\n{turns_text}"
+
+    ollama_req = {
+        "model": dict(game)["model_id"],
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "Summarize these story events in 2–3 sentences, past tense. "
+                    "Be specific: names, locations, key actions. No commentary."
+                ),
+            },
+            {"role": "user", "content": turns_text},
+        ],
+        "stream": False,
+        "options": {"temperature": 0.3, "num_predict": 120},
+    }
+
+    async with httpx.AsyncClient(timeout=None) as client:
+        r = await client.post(f"{OLLAMA_HOST}/api/chat", json=ollama_req)
+        data = r.json()
+    summary = data.get("message", {}).get("content", "").strip()
+
+    conn = get_db()
+    conn.execute("UPDATE games SET story_summary=? WHERE id=?", (summary, game_id))
+    conn.commit()
+    conn.close()
+    return {"summary": summary}
 
 
 # ── Turns ─────────────────────────────────────────────────────────────────────

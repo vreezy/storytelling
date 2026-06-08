@@ -17,6 +17,19 @@ services:
       - OLLAMA_HOST=http://172.24.0.1:11434
     restart: unless-stopped
 
+  # One-shot: plays 30 turns and writes an analysis report to tests/reports/
+  # Run with: podman compose run --rm tester
+  tester:
+    image: python:3.11-slim
+    volumes:
+      - .:/app
+    working_dir: /app
+    command: sh -c "pip install -q requests && python tests/test_playthrough.py"
+    stdin_open: true
+    tty: true
+    depends_on:
+      - backend
+
   # One-shot: downloads Bootstrap + jQuery into libs/
   # Run once with: podman compose run --rm downloader
   downloader:

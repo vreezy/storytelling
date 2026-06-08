@@ -5,3 +5,4 @@ libs/
 data/
 __pycache__/
 *.pyc
+/tests/reports/

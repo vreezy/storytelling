@@ -12,7 +12,9 @@ erDiagram
         TEXT model_id
         TEXT system_prompt
         TEXT scenario_prompt
+        TEXT custom_prompt
         TEXT opening_text
+        TEXT story_summary
         INTEGER num_predict
         DATETIME created_at
         DATETIME last_played_at
@@ -100,6 +102,7 @@ erDiagram
 | `system_prompt` | Globaler DM-Prompt (Schreibstil, allg. Regeln), editierbar im Plot-Tab |
 | `scenario_prompt` | Szenario-spezifischer DM-Prompt (Weltbeschreibung, Szenario-Regeln), editierbar im Scenario-Tab |
 | `opening_text` | Eröffnungstext der Story (wird als erstes Narrativ angezeigt) |
+| `story_summary` | Fortlaufende Zusammenfassung der aus dem Kontextfenster gekürzten Spielzüge |
 | `num_predict` | Per-Game Output-Token-Limit (25–200, Standard: 150), editierbar im Model-Tab |
 
 ### turns

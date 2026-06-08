@@ -180,6 +180,17 @@ export async function undoTurn(gameId) {
   await fetch(`${_base}/api/games/${gameId}/turns/last`, { method: 'DELETE' });
 }
 
+// ── Summarize ────────────────────────────────────────────────────────────────
+export async function summarizeGame(gameId, data) {
+  const r = await fetch(`${_base}/api/games/${gameId}/summarize`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) throw new Error(`Summarize failed: ${r.status}`);
+  return r.json();
+}
+
 // ── Stats ─────────────────────────────────────────────────────────────────────
 export async function getStats() {
   const r = await fetch(`${_base}/api/stats`);

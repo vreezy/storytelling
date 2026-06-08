@@ -6,7 +6,7 @@ import {
 import {
   getGame, getCharacter, getCards, putCharacter, putGame,
   createCard, putCard, deleteCard,
-  streamTurn, putTurn, undoTurn, getStats,
+  streamTurn, putTurn, undoTurn, getStats, summarizeGame,
 } from './api.js';
 
 // ── Active segment edit cleanup handle ────────────────────────────────────────
@@ -27,6 +27,8 @@ const state = {
   segments:       [],
   lastAction:     null,
   generating:     false,
+  summarizing:    false,
+  storySummary:   '',
   numPredict:     150,
   sidebarOpen:    false,
 };
@@ -71,6 +73,7 @@ async function loadGame(id) {
   state.systemPrompt    = game.system_prompt || '';
   state.scenarioPrompt  = game.scenario_prompt || '';
   state.customPrompt    = game.custom_prompt || '';
+  state.storySummary    = game.story_summary || '';
   state.numPredict      = game.num_predict ?? 150;
   state.character    = { name: '', description: '', class: '', stats: null, notes: '' };
   state.messages     = [];
@@ -227,7 +230,23 @@ async function generateContinuation(actionText, actionType) {
     }
     state.messages.push({ role: 'assistant', content: response });
     const maxMsg = state.config.contextMaxMessages || 20;
-    if (state.messages.length > maxMsg) state.messages = state.messages.slice(-maxMsg);
+    if (state.messages.length > maxMsg) {
+      if (!state.summarizing) {
+        const overflow = state.messages.slice(0, state.messages.length - maxMsg);
+        state.summarizing = true;
+        summarizeGame(state.gameId, {
+          messages:         overflow,
+          existing_summary: state.storySummary,
+        }).then(result => {
+          state.storySummary = result.summary;
+        }).catch(err => {
+          console.warn('[summary] failed:', err);
+        }).finally(() => {
+          state.summarizing = false;
+        });
+      }
+      state.messages = state.messages.slice(-maxMsg);
+    }
     updateContextBar();
 
   } catch (err) {
@@ -248,7 +267,13 @@ function buildMessages(actionType, playerLine) {
     : (state.config.actionPrompts?.[actionType] || '');
   const cardsCtx     = buildCardsContext(playerLine || '');
   let sysContent = [
-    state.systemPrompt, state.scenarioPrompt, state.customPrompt, charCtx, cardsCtx, actionPrompt,
+    state.systemPrompt,
+    state.scenarioPrompt,
+    state.customPrompt,
+    charCtx,
+    cardsCtx,
+    state.storySummary ? `Story so far: ${state.storySummary}` : '',
+    actionPrompt,
   ].filter(Boolean).join('\n\n');
 
   let history = [...state.messages];

@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS games (
     scenario_prompt TEXT,                       -- scenario-specific DM instructions
     custom_prompt  TEXT,                        -- custom prompt extension (writing style, etc.)
     opening_text   TEXT,                        -- opening text shown at game start
+    story_summary  TEXT,                        -- rolling narrative summary of pruned turns
     num_predict    INTEGER  NOT NULL DEFAULT 150,  -- per-game output token limit
     created_at     DATETIME DEFAULT (datetime('now')),
     last_played_at DATETIME DEFAULT (datetime('now'))
