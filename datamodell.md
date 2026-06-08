@@ -11,13 +11,20 @@ erDiagram
         TEXT scenario_id
         TEXT model_id
         TEXT system_prompt
-        TEXT scenario_prompt
         TEXT custom_prompt
-        TEXT opening_text
         TEXT story_summary
         INTEGER num_predict
         DATETIME created_at
         DATETIME last_played_at
+    }
+
+    scenarios {
+        INTEGER game_id PK
+        TEXT name
+        TEXT icon
+        TEXT description
+        TEXT scenario_prompt
+        TEXT opening_text
     }
 
     turns {
@@ -88,6 +95,7 @@ erDiagram
     }
 
     games ||--o{ turns : "has"
+    games ||--o| scenarios : "has"
     games ||--o| characters : "has"
     games ||--o{ world_cards : "has"
     games ||--o{ bookmarks : "has"
@@ -97,22 +105,35 @@ erDiagram
 ## Field notes
 
 ### games
+
 | Field | Description |
 |---|---|
 | `system_prompt` | Global narrator prompt (writing style, general rules) — editable in the Plot tab |
-| `scenario_prompt` | Scenario-specific narrator prompt (world setting, scenario rules) — editable in the Scenario tab |
-| `opening_text` | Opening narrative shown as the first story segment |
+| `custom_prompt` | Additional writing style / narrative rules appended after system_prompt |
 | `story_summary` | Running summary of turns that have been trimmed from the context window |
 | `num_predict` | Per-game output token limit (25–200, default: 150) — editable in the Model tab |
 
+### scenarios
+
+| Field | Description |
+|---|---|
+| `game_id` | PK and FK to games — enforces 1:1 relationship |
+| `name` | Display name shown in the UI (e.g. "Dungeons & Dragons") |
+| `icon` | Emoji icon displayed on the scenario card and game header |
+| `description` | One-line pitch on the scenario card |
+| `scenario_prompt` | Scenario-specific narrator prompt (world setting, scenario rules) — moved from games, editable in the Scenario tab |
+| `opening_text` | Opening narrative shown as the first story segment — moved from games |
+
 ### turns
+
 | Field | Description |
 |---|---|
 | `action_type` | `do` / `say` / `story` / `continue` |
 | `full_prompt` | JSON array of messages sent to Ollama |
 | `ollama_request` | Full Ollama request body |
 
-### world_cards
+### world\_cards
+
 | Field | Description |
 |---|---|
 | `type` | `location` / `npc` / `item` / `faction` / `lore` |

@@ -98,6 +98,13 @@ async function checkHealth(config, onStatusChange) {
   }
 }
 
+// ── File download ─────────────────────────────────────────────────────────────
+export function triggerDownload(text, filename) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  Object.assign(document.createElement('a'), { href: url, download: filename }).click();
+  URL.revokeObjectURL(url);
+}
+
 // ── Template rendering ────────────────────────────────────────────────────────
 // Clones a <template id="tmpl-*"> and fills placeholders:
 //   data-bind="key"         → sets .text()

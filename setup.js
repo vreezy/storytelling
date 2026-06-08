@@ -1,11 +1,12 @@
 // StoryTelling — setup screen logic
 
 import {
-  loadConfig, initApi, showToast, pollHealth, parseDate, renderTemplate,
+  loadConfig, initApi, showToast, pollHealth, parseDate, renderTemplate, triggerDownload,
 } from './utils.js';
 import {
   getModels, deleteModel, pullModel,
   getGames, createGame, deleteGame,
+  getGameScenario, importScenario,
   putCharacter, createCard, getStats,
 } from './api.js';
 
@@ -175,22 +176,32 @@ async function refreshGameList() {
     const $tbody = $table.find('tbody');
 
     games.forEach(g => {
-      const sc         = (state.config.scenarios || []).find(s => s.id === g.scenario_id) || {};
-      const icon       = sc.icon || '📖';
+      const icon       = g.scenario_icon || '📖';
+      const scName     = g.scenario_name || g.scenario_id || '—';
       const modelShort = (g.model_id || '').split(':')[0].split('/').pop();
 
       const $row = renderTemplate('tmpl-game-row', {
         title:      g.title,
-        scenario:   `${icon} ${sc.name || g.scenario_id || '—'}`,
+        scenario:   `${icon} ${scName}`,
         model:      modelShort,
         lastPlayed: parseDate(g.last_played_at),
       });
       $row.find('tr').attr('data-game-id', g.id);
 
       $row.find('tr').on('click', function (e) {
-        if ($(e.target).hasClass('delete-game-btn')) return;
+        if ($(e.target).closest('button').length) return;
         bootstrap.Modal.getInstance(document.getElementById('load-modal'))?.hide();
         window.location.href = `game.html?id=${g.id}`;
+      });
+
+      $row.find('.export-game-btn').on('click', async function (e) {
+        e.stopPropagation();
+        try {
+          const scenario = await getGameScenario(g.id);
+          triggerDownload(JSON.stringify(scenario, null, 2), `${scenario.id || g.id}.json`);
+        } catch (err) {
+          showToast(`Export failed: ${err.message}`, 'danger');
+        }
       });
 
       $row.find('.delete-game-btn').on('click', async function (e) {
@@ -252,12 +263,15 @@ async function startGame() {
   try {
     game = await createGame({
       title,
-      scenario_id:     sc.id,
-      model_id:        state.modelId,
-      system_prompt:   globalPrompt,
-      scenario_prompt: scenarioPrompt,
-      custom_prompt:   state.config.customSystemPrompt || '',
-      opening_text:    sc.openingText || '',
+      scenario_id:          sc.id,
+      model_id:             state.modelId,
+      system_prompt:        globalPrompt,
+      scenario_prompt:      scenarioPrompt,
+      custom_prompt:        state.config.customSystemPrompt || '',
+      opening_text:         sc.openingText || '',
+      scenario_name:        sc.name || '',
+      scenario_icon:        sc.icon || '📖',
+      scenario_description: sc.description || '',
     });
   } catch (e) {
     showToast(`Could not create game: ${e.message}`, 'danger');
@@ -322,4 +336,19 @@ function bindEvents() {
   document.getElementById('models-modal').addEventListener('show.bs.modal', openModelsModal);
   document.getElementById('load-modal').addEventListener('show.bs.modal', refreshGameList);
   document.getElementById('stats-modal').addEventListener('show.bs.modal', openStatsModal);
+
+  $('#import-scenario-btn').on('click', () => $('#import-scenario-input').trigger('click'));
+  $('#import-scenario-input').on('change', async function () {
+    const file = this.files?.[0];
+    if (!file) return;
+    this.value = '';
+    try {
+      const data = JSON.parse(await file.text());
+      await importScenario(data);
+      showToast(`Scenario "${data.name}" imported.`, 'success');
+      setTimeout(() => location.reload(), 1200);
+    } catch (err) {
+      showToast(`Import failed: ${err.message}`, 'danger');
+    }
+  });
 }

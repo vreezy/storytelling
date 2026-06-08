@@ -1,12 +1,13 @@
 // StoryTelling — game screen logic
 
 import {
-  loadConfig, initApi, showToast, pollHealth, parseDate, renderTemplate,
+  loadConfig, initApi, showToast, pollHealth, parseDate, renderTemplate, triggerDownload,
 } from './utils.js';
 import {
   getGame, getCharacter, getCards, putCharacter, putGame,
   createCard, putCard, deleteCard,
   streamTurn, putTurn, undoTurn, getStats, summarizeGame,
+  getGameScenario,
 } from './api.js';
 
 // ── Active segment edit cleanup handle ────────────────────────────────────────
@@ -90,9 +91,16 @@ async function loadGame(id) {
     state.cards = await getCards(id);
   } catch { state.cards = []; }
 
-  const sc = (state.config.scenarios || []).find(s => s.id === game.scenario_id) || {};
-  state.scenario = sc;
-  $('#scenario-title').text(`${sc.icon || ''} ${sc.name || game.title}`);
+  state.scenario = {
+    id:          game.scenario_id,
+    name:        game.scenario_name || game.title,
+    icon:        game.scenario_icon || '',
+    description: game.scenario_description || '',
+  };
+  $('#scenario-title').text(`${state.scenario.icon} ${state.scenario.name}`.trim());
+  $('#scenario-icon-edit').val(state.scenario.icon);
+  $('#scenario-name-edit').val(state.scenario.name);
+  $('#scenario-desc-edit').val(state.scenario.description);
   $('#story-text').empty();
   state.segments = [];
 
@@ -655,15 +663,38 @@ function bindEvents() {
     putGame(state.gameId, { num_predict: 150 }).catch(() => {});
   });
 
-  // Scenario tab: scenario-specific DM prompt
+  // Scenario tab: scenario-specific DM prompt + display metadata
   $('#scenario-save-btn').on('click', async () => {
     const text = $('#scenario-prompt-edit').val();
+    const name = $('#scenario-name-edit').val().trim();
+    const icon = $('#scenario-icon-edit').val().trim();
+    const desc = $('#scenario-desc-edit').val().trim();
     try {
-      await putGame(state.gameId, { scenario_prompt: text });
+      await putGame(state.gameId, {
+        scenario_prompt:      text,
+        scenario_name:        name,
+        scenario_icon:        icon,
+        scenario_description: desc,
+      });
       state.scenarioPrompt = text;
-      showToast('Scenario prompt saved.', 'success');
+      state.scenario.name  = name || state.scenario.name;
+      state.scenario.icon  = icon || state.scenario.icon;
+      state.scenario.description = desc;
+      $('#scenario-title').text(`${state.scenario.icon} ${state.scenario.name}`.trim());
+      showToast('Scenario saved.', 'success');
     } catch {
-      showToast('Failed to save scenario prompt.', 'danger');
+      showToast('Failed to save scenario.', 'danger');
+    }
+  });
+
+  // Scenario tab: export
+  $('#scenario-export-btn').on('click', async () => {
+    try {
+      const scenario = await getGameScenario(state.gameId);
+      triggerDownload(JSON.stringify(scenario, null, 2), `${scenario.id || state.gameId}.json`);
+      showToast('Scenario exported.', 'success');
+    } catch (err) {
+      showToast(`Export failed: ${err.message}`, 'danger');
     }
   });
 

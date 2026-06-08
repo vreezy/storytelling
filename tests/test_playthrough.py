@@ -230,17 +230,17 @@ class GameClient:
         self.base_url = base_url.rstrip("/")
 
     def health_check(self):
-        r = requests.get(f"{self.base_url}/api/health", timeout=5)
+        r = requests.get(f"{self.base_url}/api/health", timeout=None)
         r.raise_for_status()
         return r.json()
 
     def create_game(self, payload):
-        r = requests.post(f"{self.base_url}/api/games", json=payload, timeout=10)
+        r = requests.post(f"{self.base_url}/api/games", json=payload, timeout=None)
         r.raise_for_status()
         return r.json()
 
     def get_game(self, game_id):
-        r = requests.get(f"{self.base_url}/api/games/{game_id}", timeout=10)
+        r = requests.get(f"{self.base_url}/api/games/{game_id}", timeout=None)
         r.raise_for_status()
         return r.json()
 
@@ -248,7 +248,7 @@ class GameClient:
         r = requests.post(
             f"{self.base_url}/api/games/{game_id}/summarize",
             json={"messages": messages, "existing_summary": existing_summary},
-            timeout=60,
+            timeout=None,
         )
         r.raise_for_status()
         return r.json()
@@ -263,7 +263,7 @@ class GameClient:
             f"{self.base_url}/api/games/{game_id}/turns",
             json=payload,
             stream=True,
-            timeout=(10, 90),
+            timeout=None,
         )
         r.raise_for_status()
 

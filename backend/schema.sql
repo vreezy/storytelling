@@ -6,13 +6,21 @@ CREATE TABLE IF NOT EXISTS games (
     scenario_id    TEXT,
     model_id       TEXT,
     system_prompt  TEXT,                        -- global DM system prompt
-    scenario_prompt TEXT,                       -- scenario-specific DM instructions
     custom_prompt  TEXT,                        -- custom prompt extension (writing style, etc.)
-    opening_text   TEXT,                        -- opening text shown at game start
     story_summary  TEXT,                        -- rolling narrative summary of pruned turns
     num_predict    INTEGER  NOT NULL DEFAULT 150,  -- per-game output token limit
     created_at     DATETIME DEFAULT (datetime('now')),
     last_played_at DATETIME DEFAULT (datetime('now'))
+);
+
+-- ── Scenarios (display metadata + prompts, 1:1 with games) ───────────────────
+CREATE TABLE IF NOT EXISTS scenarios (
+    game_id         INTEGER  PRIMARY KEY REFERENCES games(id) ON DELETE CASCADE,
+    name            TEXT     NOT NULL DEFAULT '',
+    icon            TEXT     NOT NULL DEFAULT '📖',
+    description     TEXT     NOT NULL DEFAULT '',
+    scenario_prompt TEXT,                       -- scenario-specific DM instructions
+    opening_text    TEXT                        -- opening text shown at game start
 );
 
 -- ── Turns (full debug data per generation) ───────────────────────────────────

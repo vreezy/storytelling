@@ -64,6 +64,11 @@
               <textarea id="custom-prompt" class="form-control font-monospace" rows="3"
                         placeholder="e.g.: You are a detective in 1920s Berlin…"></textarea>
             </div>
+            <div class="mt-3 d-flex align-items-center gap-2">
+              <button id="import-scenario-btn" class="btn btn-sm btn-outline-secondary">⬆ Import Scenario</button>
+              <small class="text-secondary">Load a .json scenario file</small>
+            </div>
+            <input type="file" id="import-scenario-input" accept=".json" class="d-none">
           </div>
         </div>
 
@@ -125,7 +130,7 @@
 
   <!-- ====== LOAD GAME MODAL ====== -->
   <div class="modal fade" id="load-modal" tabindex="-1">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-dialog modal-dialog-scrollable" style="max-width:90vw">
       <div class="modal-content">
         <div class="modal-header py-2">
           <h6 class="modal-title mb-0">📂 Load Game</h6>
@@ -210,7 +215,10 @@
       <td data-bind="scenario"></td>
       <td><small class="text-secondary" data-bind="model"></small></td>
       <td class="text-end"><small class="text-secondary" data-bind="lastPlayed"></small></td>
-      <td><button class="btn btn-sm btn-outline-danger delete-game-btn">✕</button></td>
+      <td class="text-nowrap">
+        <button class="btn btn-sm btn-outline-secondary export-game-btn me-1" title="Export scenario">⬇</button>
+        <button class="btn btn-sm btn-outline-danger delete-game-btn">✕</button>
+      </td>
     </tr>
   </template>
 

@@ -6,3 +6,4 @@ data/
 __pycache__/
 *.pyc
 /tests/reports/
+/scenarios/special.json

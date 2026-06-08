@@ -6,6 +6,7 @@ Ollama is expected at OLLAMA_HOST (default: http://host.docker.internal:11434)
 
 import json
 import os
+import re
 import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -38,13 +39,11 @@ def init_db():
         schema = f.read()
     conn = get_db()
     conn.executescript(schema)
-    # Migrations for existing databases
+
+    # ── Column-level migrations for existing databases ────────────────────────
     cols = {r[1] for r in conn.execute("PRAGMA table_info(games)").fetchall()}
     if "num_predict" not in cols:
         conn.execute("ALTER TABLE games ADD COLUMN num_predict INTEGER NOT NULL DEFAULT 150")
-        conn.commit()
-    if "scenario_prompt" not in cols:
-        conn.execute("ALTER TABLE games ADD COLUMN scenario_prompt TEXT")
         conn.commit()
     if "custom_prompt" not in cols:
         conn.execute("ALTER TABLE games ADD COLUMN custom_prompt TEXT")
@@ -52,10 +51,57 @@ def init_db():
     if "story_summary" not in cols:
         conn.execute("ALTER TABLE games ADD COLUMN story_summary TEXT")
         conn.commit()
+
     card_cols = {r[1] for r in conn.execute("PRAGMA table_info(world_cards)").fetchall()}
     if "triggers" not in card_cols:
         conn.execute("ALTER TABLE world_cards ADD COLUMN triggers TEXT")
         conn.commit()
+
+    # ── scenarios table (new installs get it from schema.sql) ─────────────────
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS scenarios (
+            game_id         INTEGER PRIMARY KEY REFERENCES games(id) ON DELETE CASCADE,
+            name            TEXT NOT NULL DEFAULT '',
+            icon            TEXT NOT NULL DEFAULT '📖',
+            description     TEXT NOT NULL DEFAULT '',
+            scenario_prompt TEXT,
+            opening_text    TEXT
+        )
+    """)
+    conn.commit()
+
+    # ── Migrate scenario_prompt / opening_text out of games (old DBs) ─────────
+    if "scenario_prompt" in cols:
+        conn.execute("""
+            INSERT OR IGNORE INTO scenarios (game_id, scenario_prompt, opening_text)
+            SELECT id, scenario_prompt, opening_text FROM games
+        """)
+        conn.commit()
+        conn.executescript("""
+            BEGIN;
+            CREATE TABLE games_new (
+                id             INTEGER PRIMARY KEY AUTOINCREMENT,
+                title          TEXT    NOT NULL DEFAULT 'Untitled Adventure',
+                description    TEXT,
+                scenario_id    TEXT,
+                model_id       TEXT,
+                system_prompt  TEXT,
+                custom_prompt  TEXT,
+                story_summary  TEXT,
+                num_predict    INTEGER NOT NULL DEFAULT 150,
+                created_at     DATETIME DEFAULT (datetime('now')),
+                last_played_at DATETIME DEFAULT (datetime('now'))
+            );
+            INSERT INTO games_new
+                SELECT id, title, description, scenario_id, model_id, system_prompt,
+                       custom_prompt, story_summary, num_predict, created_at, last_played_at
+                FROM games;
+            DROP TABLE games;
+            ALTER TABLE games_new RENAME TO games;
+            CREATE INDEX IF NOT EXISTS idx_games_played ON games(last_played_at DESC);
+            COMMIT;
+        """)
+
     conn.close()
 
 
@@ -75,6 +121,20 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+# ── Shared query helper ────────────────────────────────────────────────────────
+
+_GAME_SELECT = """
+    SELECT g.*,
+           s.name            AS scenario_name,
+           s.icon            AS scenario_icon,
+           s.description     AS scenario_description,
+           s.scenario_prompt AS scenario_prompt,
+           s.opening_text    AS opening_text
+    FROM games g
+    LEFT JOIN scenarios s ON s.game_id = g.id
+"""
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
@@ -150,7 +210,7 @@ async def delete_model(model_id: str):
 async def list_games():
     conn = get_db()
     rows = conn.execute(
-        "SELECT * FROM games ORDER BY last_played_at DESC"
+        _GAME_SELECT + " ORDER BY g.last_played_at DESC"
     ).fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -161,22 +221,33 @@ async def create_game(request: Request):
     body = await request.json()
     conn = get_db()
     cur = conn.execute(
-        """INSERT INTO games (title, description, scenario_id, model_id, system_prompt, scenario_prompt, custom_prompt, opening_text)
-           VALUES (?,?,?,?,?,?,?,?)""",
+        """INSERT INTO games (title, description, scenario_id, model_id, system_prompt, custom_prompt)
+           VALUES (?,?,?,?,?,?)""",
         (
             body.get("title", "Untitled Adventure"),
             body.get("description"),
             body.get("scenario_id"),
             body.get("model_id"),
             body.get("system_prompt"),
-            body.get("scenario_prompt"),
             body.get("custom_prompt"),
-            body.get("opening_text"),
         ),
     )
     conn.commit()
     game_id = cur.lastrowid
-    row = conn.execute("SELECT * FROM games WHERE id=?", (game_id,)).fetchone()
+    conn.execute(
+        """INSERT INTO scenarios (game_id, name, icon, description, scenario_prompt, opening_text)
+           VALUES (?,?,?,?,?,?)""",
+        (
+            game_id,
+            body.get("scenario_name", ""),
+            body.get("scenario_icon", "📖"),
+            body.get("scenario_description", ""),
+            body.get("scenario_prompt"),
+            body.get("opening_text"),
+        ),
+    )
+    conn.commit()
+    row = conn.execute(_GAME_SELECT + " WHERE g.id=?", (game_id,)).fetchone()
     conn.close()
     return dict(row)
 
@@ -184,7 +255,7 @@ async def create_game(request: Request):
 @app.get("/api/games/{game_id}")
 async def get_game(game_id: int):
     conn = get_db()
-    game = conn.execute("SELECT * FROM games WHERE id=?", (game_id,)).fetchone()
+    game = conn.execute(_GAME_SELECT + " WHERE g.id=?", (game_id,)).fetchone()
     if not game:
         conn.close()
         raise HTTPException(404, "Game not found")
@@ -198,15 +269,39 @@ async def get_game(game_id: int):
 @app.put("/api/games/{game_id}")
 async def update_game(game_id: int, request: Request):
     body = await request.json()
-    allowed = ["title", "description", "num_predict", "system_prompt", "scenario_prompt", "custom_prompt", "opening_text", "story_summary"]
-    updates = {k: body[k] for k in allowed if k in body}
+
+    game_fields     = ["title", "description", "num_predict", "system_prompt", "custom_prompt", "story_summary"]
+    scenario_fields = ["scenario_name", "scenario_icon", "scenario_description", "scenario_prompt", "opening_text"]
+
+    game_updates     = {k: body[k] for k in game_fields     if k in body}
+    scenario_updates = {k: body[k] for k in scenario_fields if k in body}
+
     conn = get_db()
-    if updates:
-        cols = ", ".join(f"{k}=?" for k in updates)
-        vals = list(updates.values()) + [game_id]
+
+    if game_updates:
+        cols = ", ".join(f"{k}=?" for k in game_updates)
+        vals = list(game_updates.values()) + [game_id]
         conn.execute(f"UPDATE games SET {cols} WHERE id=?", vals)
         conn.commit()
-    row = conn.execute("SELECT * FROM games WHERE id=?", (game_id,)).fetchone()
+
+    if scenario_updates:
+        # Map API field names to column names
+        col_map = {
+            "scenario_name":        "name",
+            "scenario_icon":        "icon",
+            "scenario_description": "description",
+            "scenario_prompt":      "scenario_prompt",
+            "opening_text":         "opening_text",
+        }
+        conn.execute(
+            "INSERT OR IGNORE INTO scenarios (game_id) VALUES (?)", (game_id,)
+        )
+        cols = ", ".join(f"{col_map[k]}=?" for k in scenario_updates)
+        vals = list(scenario_updates.values()) + [game_id]
+        conn.execute(f"UPDATE scenarios SET {cols} WHERE game_id=?", vals)
+        conn.commit()
+
+    row = conn.execute(_GAME_SELECT + " WHERE g.id=?", (game_id,)).fetchone()
     conn.close()
     if not row:
         raise HTTPException(404, "Game not found")
@@ -221,6 +316,101 @@ async def delete_game(game_id: int):
     conn.close()
     return {"ok": True}
 
+
+# ── Scenario export / import ──────────────────────────────────────────────────
+
+@app.get("/api/games/{game_id}/scenario")
+async def export_game_scenario(game_id: int):
+    conn = get_db()
+    game = conn.execute(_GAME_SELECT + " WHERE g.id=?", (game_id,)).fetchone()
+    if not game:
+        conn.close()
+        raise HTTPException(404, "Game not found")
+    character = conn.execute(
+        "SELECT * FROM characters WHERE game_id=?", (game_id,)
+    ).fetchone()
+    cards = conn.execute(
+        "SELECT * FROM world_cards WHERE game_id=? ORDER BY sort_order, id", (game_id,)
+    ).fetchall()
+    conn.close()
+
+    game = dict(game)
+    scenario_id = game.get("scenario_id") or f"game_{game_id}"
+
+    export = {
+        "id":           scenario_id,
+        "name":         game.get("scenario_name") or game.get("title", ""),
+        "icon":         game.get("scenario_icon") or "📖",
+        "description":  game.get("scenario_description") or "",
+        "scenarioPrompt": game.get("scenario_prompt") or "",
+        "openingText":  game.get("opening_text") or "",
+    }
+
+    if character:
+        mc = {"name": character["name"]}
+        if character["class"]:
+            mc["class"] = character["class"]
+        if character["description"]:
+            mc["description"] = character["description"]
+        export["mainCharacters"] = [mc]
+
+    if cards:
+        export["cards"] = [
+            {
+                "type":        c["type"],
+                "name":        c["name"],
+                "description": c["description"] or "",
+                "triggers":    c["triggers"] or "",
+            }
+            for c in cards
+        ]
+
+    return export
+
+
+_VALID_CARD_TYPES = {"location", "npc", "item", "faction", "lore"}
+
+
+@app.post("/api/scenarios/import")
+async def import_scenario(request: Request):
+    body = await request.json()
+
+    errors = []
+    sc_id = body.get("id", "")
+    if not sc_id:
+        errors.append('missing "id"')
+    elif not re.match(r"^[a-z0-9_-]+$", sc_id):
+        errors.append('"id" must match ^[a-z0-9_-]+$')
+    if not body.get("name"):
+        errors.append('missing "name"')
+    for i, card in enumerate(body.get("cards", [])):
+        if not card.get("type"):
+            errors.append(f'card[{i}] missing "type"')
+        elif card["type"] not in _VALID_CARD_TYPES:
+            errors.append(f'card[{i}] invalid type "{card["type"]}"')
+        if not card.get("name"):
+            errors.append(f'card[{i}] missing "name"')
+    if errors:
+        raise HTTPException(400, f"Validation failed: {'; '.join(errors)}")
+
+    scenarios_dir = os.path.join(STATIC_DIR, "scenarios")
+    with open(os.path.join(scenarios_dir, f"{sc_id}.json"), "w", encoding="utf-8") as f:
+        json.dump(body, f, ensure_ascii=False, indent=2)
+
+    index_path = os.path.join(scenarios_dir, "index.json")
+    with open(index_path, encoding="utf-8") as f:
+        index = json.load(f)
+    ids = index.get("scenarios", [])
+    if sc_id not in ids:
+        ids.append(sc_id)
+        index["scenarios"] = ids
+        with open(index_path, "w", encoding="utf-8") as f:
+            json.dump(index, f, ensure_ascii=False, indent=2)
+
+    return body
+
+
+# ── Summarize ─────────────────────────────────────────────────────────────────
 
 @app.post("/api/games/{game_id}/summarize")
 async def summarize_game(game_id: int, request: Request):

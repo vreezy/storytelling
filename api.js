@@ -80,6 +80,25 @@ export async function deleteGame(id) {
   await fetch(`${_base}/api/games/${id}`, { method: 'DELETE' });
 }
 
+export async function getGameScenario(gameId) {
+  const r = await fetch(`${_base}/api/games/${gameId}/scenario`);
+  if (!r.ok) throw new Error(`Export failed: ${r.status}`);
+  return r.json();
+}
+
+export async function importScenario(data) {
+  const r = await fetch(`${_base}/api/scenarios/import`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({}));
+    throw new Error(e.detail || `Import failed: ${r.status}`);
+  }
+  return r.json();
+}
+
 export async function putGame(gameId, data) {
   const r = await fetch(`${_base}/api/games/${gameId}`, {
     method: 'PUT',
