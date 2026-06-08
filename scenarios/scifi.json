@@ -1,0 +1,63 @@
+{
+  "id": "scifi",
+  "name": "Science Fiction",
+  "icon": "🚀",
+  "description": "Space cowboys, alien frontiers and the Queen of the Crown",
+  "scenarioPrompt": "Year 2086, Galaxy Rangers. Space cowboys on the galactic frontier. BETA Mountain, ship Ranger One. Planets: peaceful Kirwin, outlaw Tortuna. Villain: Queen of the Crown, her psychocrystals and Crown Agents. Rangers: Foxx (cybernetic arm), Doc (robot implant), Niko (psychic), Goose (Supertrooper). Bold 80s space-western: vivid, pulpy, high stakes.",
+  "openingText": "Ranger One drops out of hyperspace above Tortuna, its shields already cycling up. Below, the red-dust hellhole sprawls under a bruised sky — somewhere down there, a Crown slaver ship is running a manifest that doesn't add up, and three Kiwi colonists from Kirwin haven't been heard from in a week. BETA Mountain is watching your telemetry. The call is yours.",
+  "mainCharacters": [
+    {
+      "name": "Shane Gooseman",
+      "class": "Galaxy Ranger — Series 5 Supertrooper",
+      "description": "Genetically engineered for combat, with bio-defenses that can adapt to almost any threat. The most physically capable of the Rangers. Speaks little, observes everything. Haunted by what he was made to be and quietly loyal to what he chose to become."
+    }
+  ],
+  "cards": [
+    {
+      "type": "location",
+      "name": "Ranger One",
+      "description": "The Galaxy Rangers' deep-space flagship. Crew: Commander Zachary Foxx (cybernetic arm, team leader), Hartford 'Doc' (tech specialist, robot implant), Niko (psychic, Series 5 precognition), Goose (Supertrooper, bio-defenses). Fast, armed, and operated out of BETA Mountain, Earth. Often the only law enforcement within several light-years."
+    },
+    {
+      "type": "faction",
+      "name": "Galaxy Rangers",
+      "description": "BETA Mountain's elite interstellar law enforcement. Four Rangers, each augmented by Series 5 implants. Operate under Commander Joseph Walsh's orders with broad jurisdiction and limited resources. Primary threat: the Queen of the Crown's psychocrystal slaver empire. Key allies: the peaceful Kiwi colonists of Kirwin."
+    },
+    {
+      "type": "location",
+      "name": "Tortuna",
+      "description": "The galaxy's worst outlaw planet. Red-dust atmosphere, grimy cantinas, no extradition. Crown Agents use it as a transit hub; bounty hunters use it as an office. Information is for sale here; loyalty is not. Anyone present is probably running from something.",
+      "triggers": "tortuna, outlaw, criminal, red dust, cantina, bar, bounty, underground, black market, planet surface"
+    },
+    {
+      "type": "location",
+      "name": "BETA Mountain",
+      "description": "Galaxy Ranger headquarters on Earth. Commander Walsh's operations center. Mission briefings, debriefs, equipment resupply. Walsh monitors ranger telemetry in real time and expects reports. The place Rangers return to when they survive.",
+      "triggers": "beta mountain, headquarters, walsh, commander, report, debrief, earth, home base, briefing"
+    },
+    {
+      "type": "location",
+      "name": "Kirwin",
+      "description": "A peaceful agricultural colony populated by Kiwi birds — gentle, round, flightless avians who want nothing but to farm and be left alone. Frequently targeted by Crown slavers for psychocrystal harvesting. The Rangers have a soft spot for Kirwin's colonists.",
+      "triggers": "kirwin, colony, kiwi, kiwi bird, peaceful, civilian, farm, settlement, colonists"
+    },
+    {
+      "type": "npc",
+      "name": "Commander Walsh",
+      "description": "Director of BETA Mountain and commanding officer of the Galaxy Rangers. Gruff, pragmatic, and strategically brilliant. Never sends the Rangers in without reason; rarely sends them in with enough backup. Cares about the team but can't always show it.",
+      "triggers": "walsh, commander, orders, mission, briefing, report, debrief, contact base"
+    },
+    {
+      "type": "npc",
+      "name": "The Queen of the Crown",
+      "description": "Absolute ruler of the Crown Empire. Uses psychocrystals — extracted from enslaved beings — to power her empire and her BrainGrid. Ancient, ruthless, and convinced of her right to conquer. Her agents are everywhere. She considers the Galaxy Rangers a personal affront.",
+      "triggers": "queen, crown, psychocrystal, crystal, slaver, slave, empire, enemy, brain grid"
+    },
+    {
+      "type": "faction",
+      "name": "Crown Agents",
+      "description": "Soldiers and operatives of the Crown Empire. Range from armored shock troops to covert infiltrators. All fanatically loyal to the Queen. Standard tactic: capture and deliver subjects for psychocrystal harvesting. Dangerous individually; overwhelming in numbers.",
+      "triggers": "crown agent, agent, soldier, attack, pursuit, patrol, crown ship, fighters, crown troops"
+    }
+  ]
+}

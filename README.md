@@ -133,15 +133,80 @@ The report appears in `tests/reports/analysis_YYYYMMDD_HHMMSS.md` on the host.
 
 ### Customising the run
 
-Edit `tests/playthrough_config.json` to change the model, scenario, generation parameters, or the 30 player actions.
+Each scenario has its own config file in `tests/configs/`. Select one at startup when the menu is shown.
+
+To add a run for a new scenario, copy an existing config and edit the `scenario_id` and `actions`:
 
 ```json
 {
-  "model_id": "smollm2:135m",
-  "scenario_id": "fantasy",
-  "generation": { "temperature": 0.75, "num_predict": 150 },
-  "actions": [ ... ]
+  "scenario_id": "horror",
+  "model_id": "mistral:7b-instruct",
+  "game_title": "Playthrough Test — Horror",
+  "actions": [ { "type": "do", "text": "approach the front door" }, ... ]
 }
+```
+
+---
+
+## Scenarios
+
+Scenarios live in `scenarios/`. Each file is a self-contained JSON document. The load order is controlled by `scenarios/index.json`.
+
+### Adding a new scenario
+
+**1.** Create `scenarios/<your-id>.json`:
+
+```json
+{
+  "id": "your-id",
+  "name": "Display Name",
+  "icon": "🌍",
+  "description": "One-line pitch shown on the setup screen.",
+  "scenarioPrompt": "Narrator instructions specific to this world.",
+  "openingText": "The first paragraph the player sees.",
+  "mainCharacters": [
+    {
+      "name": "Hero Name",
+      "class": "Role / Class",
+      "description": "Character background pre-filled on the setup screen."
+    }
+  ],
+  "cards": [
+    {
+      "type": "location",
+      "name": "Starting Location",
+      "description": "Always injected (no triggers = pinned)."
+    },
+    {
+      "type": "npc",
+      "name": "Key NPC",
+      "description": "Only injected when a trigger keyword matches.",
+      "triggers": "keyword1, keyword2"
+    }
+  ]
+}
+```
+
+**`type`** must be one of: `location` · `npc` · `item` · `faction` · `lore`
+
+**`triggers`** — comma-separated keywords checked against the player's current action and the last 2 messages. Leave blank (or omit) to always inject the card.
+
+**2.** Register it in `scenarios/index.json`:
+
+```json
+{ "scenarios": ["fantasy", "scifi", "horror", "zootopia", "overlord", "your-id", "custom"] }
+```
+
+The order here is the display order on the setup screen. `custom` should stay last.
+
+**3.** Reload the page — the scenario appears in the grid immediately.
+
+### Schema
+
+`scenarios/schema.json` contains a JSON Schema (Draft-07) that documents all fields and their types. Any JSON-aware editor (VS Code with the JSON Language Server) will validate your file against it automatically if you add:
+
+```json
+{ "$schema": "./schema.json", "id": "your-id", ... }
 ```
 
 ---
@@ -157,16 +222,31 @@ total turns, total tokens, average tokens per second, last used.
 
 ```
 aidungeon/
-├── index.html            # Main UI (setup screen + game screen + modals)
-├── dungeon.js            # Frontend logic
-├── dungeon-style.css     # Styles
-├── dungeon-config.json   # Scenarios, model list, generation parameters
+├── index.html            # Setup screen
+├── game.html             # Game screen
+├── setup.js              # Setup screen logic
+├── game.js               # Game screen logic
+├── api.js                # All backend fetch calls
+├── utils.js              # Shared helpers (loadConfig, showToast, …)
+├── style.css             # Shared styles
+├── config.json           # Global settings, model list, generation parameters
+├── scenarios/
+│   ├── index.json        # Load order — lists all scenario IDs
+│   ├── schema.json       # JSON Schema for scenario files (validation / editor hints)
+│   ├── fantasy.json
+│   ├── scifi.json
+│   ├── horror.json
+│   ├── zootopia.json
+│   ├── overlord.json
+│   └── custom.json
 ├── compose.yml           # Podman Compose
-├── download.py           # Downloads frontend libs (Bootstrap, jQuery)
-├── .env                  # HF_TOKEN (optional, for private HuggingFace repos)
 ├── backend/
 │   ├── main.py           # FastAPI application
 │   └── schema.sql        # SQLite schema
+├── tests/
+│   ├── test_playthrough.py   # Headless 30-turn playthrough + analysis
+│   ├── configs/              # One JSON config per scenario run
+│   └── reports/              # Generated Markdown reports (git-ignored)
 └── libs/                 # Frontend libraries (populated by downloader)
 ```
 

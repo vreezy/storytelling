@@ -1,0 +1,64 @@
+{
+  "id": "fantasy",
+  "name": "Dungeons & Dragons",
+  "icon": "⚔️",
+  "description": "The Forgotten Realms — races, classes, monsters and ancient magic",
+  "scenarioPrompt": "Forgotten Realms, D&D world. Races: elves, dwarves, tieflings, dragonborn, halflings, half-orcs. Classes: rogues, wizards, paladins, clerics, bards, druids. Monsters: dragons, beholders, undead, mind flayers, goblins. Name spells and weapons. Dark dungeons, smoky taverns, dangerous wilderness. Magic has a cost.",
+  "openingText": "The torchlight gutters as you descend the last worn step into the dungeon beneath Neverwinter. Ahead, the passage forks — from the left comes a rhythmic dripping and the stench of something long dead; from the right, a faint amber glow and the unmistakable hiss of draconic speech. Your hand finds the hilt of your weapon before you even decide.",
+  "mainCharacters": [
+    {
+      "name": "Vael Ashmark",
+      "class": "Rogue / Shadow Walker",
+      "description": "A half-elf cutpurse from Neverwinter's docks who took one job too many for the wrong patron. Now carries a stolen map that may be worth dying over — and several people who think so too."
+    }
+  ],
+  "cards": [
+    {
+      "type": "location",
+      "name": "Neverwinter",
+      "description": "A coastal city built over layered secrets. Districts: the Docks (rogues, fences, the Black Spider's network), Protector's Enclave (city watch, nobles), Blacklake (wealthy, corrupt). Below the streets stretches a dungeon older than the city itself — originally a temple complex, now a warren of collapsed halls, trapped vaults, and things that moved in when the light went out."
+    },
+    {
+      "type": "location",
+      "name": "The Dungeon Depths",
+      "description": "A labyrinth beneath Neverwinter. Stone walls sweating with damp. Torchlight reveals carved reliefs of gods no longer worshipped. Passages branch constantly; dead ends are the rule. The air carries old blood and cold stone. Whatever built this place did not build it for comfort.",
+      "triggers": "down, stairs, passage, corridor, stone, underground, torch, dark, depth, below"
+    },
+    {
+      "type": "location",
+      "name": "Left Fork — The Dripping Warrens",
+      "description": "The passage drips steadily, the source unclear. The stench intensifies — decay, standing water, something organic. The floor is tacky underfoot. Whatever died here did so in quantity and was never removed. Low ceilings. The sounds are wrong: too regular, too patient.",
+      "triggers": "left, dripping, stench, dead, corpse, rot, smell, water, damp, warrens"
+    },
+    {
+      "type": "location",
+      "name": "Right Fork — The Amber Chamber",
+      "description": "Warm amber light pulses from deeper in, source unknown. The walls are smoother here, the carvings older and deliberate. Temperature rises noticeably. The draconic hissing is speech — low, measured, addressing something. The air smells of hot stone and old gold.",
+      "triggers": "right, amber, glow, hiss, warm, heat, draconic, light, voice, gold"
+    },
+    {
+      "type": "npc",
+      "name": "Xarenth the Young",
+      "description": "A young copper dragon occupying the right fork's depths, drawn here by the dungeon's age and the gold veins in the rock. Curious and verbose. Not immediately hostile — but dragon 'not hostile' still means lethal if insulted. Knows things about the dungeon's original builders that no human scholar does.",
+      "triggers": "dragon, xarenth, right fork, amber, draconic, hiss, beast, scales, copper"
+    },
+    {
+      "type": "npc",
+      "name": "Mira Tanlen",
+      "description": "A half-elf fence operating out of a back room in the Dockside Lantern tavern, Neverwinter. Pays fair prices, asks no questions, and knows everyone who moves stolen goods through the city. Reliable only as long as the money is right.",
+      "triggers": "fence, contact, sell, deal, tavern, inn, bar, drink, rumor, meet, docks, mira"
+    },
+    {
+      "type": "faction",
+      "name": "The City Watch",
+      "description": "Neverwinter's professional guard force — underpaid, overworked, and selectively corrupt. Three shifts patrol the major districts. They carry halberds in daylight and suspicion at all hours. Warrant-holders for known thieves are posted at the gates. Most can be bribed; a few cannot.",
+      "triggers": "guard, watch, patrol, law, arrest, warrant, authority, officer, wanted"
+    },
+    {
+      "type": "lore",
+      "name": "Dungeon Hazards",
+      "description": "The dungeon was built to keep things out — and some things in. Common hazards: pressure-plate dart traps (stone tiles that give slightly underfoot), tripwire bells (thin wire at ankle height), counterweight pit traps (floor panels on pivots). More dangerous: magical wards still active on some doors, and whatever lives in the left fork.",
+      "triggers": "trap, wire, mechanism, floor, pressure, plate, step, ceiling, click, tripwire, dart"
+    }
+  ]
+}

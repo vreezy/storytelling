@@ -1,62 +1,78 @@
-# CLAUDE.md — Wichtige Hinweise für dieses Projekt
+# CLAUDE.md — Project Guidelines
 
-## Kein CDN — alles lokal
+## Language
 
-- `libs/transformers.min.js`, alle `*.wasm`-Dateien, `libs/bootstrap.min.css`, `libs/bootstrap.bundle.min.js` und `libs/jquery.min.js` müssen lokal vorhanden sein.
-- Keine externe Script- oder Stylesheet-URLs (`https://cdn.*`) in HTML-Dateien erlaubt.
-- In `app.js` und `dungeon.js` ist `env.allowRemoteModels = false` gesetzt — transformers.js darf zur Laufzeit **keine** HuggingFace-Requests machen.
+All code, comments, documentation, and configuration files in this project must be written in **English**. No German.
 
-## Modell-Downloads
+---
 
-- Download erfolgt via `download.py` (im Projekt-Root) in einem Podman-Container.
-- Starten: `podman compose run --rm downloader` (im Projekt-Root, **nicht** in einem Unterordner)
-- Welche Modelle geladen werden, steuert `.env` im Projekt-Root → Variable `DOWNLOAD_MODELS` (kommagetrennt).
-- Modelle landen unter `models/<org>/<modelname>/` (z.B. `models/HuggingFaceTB/SmolLM2-135M-Instruct/`).
-- Nur ONNX-Dateien + JSON-Configs werden heruntergeladen; PyTorch-Weights (`.bin`, `.safetensors`) werden nicht benötigt.
-- Nach dem Download wird `models-available.js` automatisch generiert — nicht manuell bearbeiten.
+## No CDN — everything local
 
-## Webserver
+- `libs/bootstrap.min.css`, `libs/bootstrap.bundle.min.js`, and `libs/jquery.min.js` must be present locally.
+- No external script or stylesheet URLs (`https://cdn.*`) are allowed in HTML files.
 
-- VS Code **Live Server** Extension wird als lokaler HTTP-Server genutzt (kein eigener Server-Container).
-- `index.html` → Rechtsklick → "Open with Live Server" → `http://127.0.0.1:5500`
-- `dungeon.html` ist unter `http://127.0.0.1:5500/dungeon.html` erreichbar.
+---
 
-## Wichtige Einstellungen in app.js und dungeon.js
+## Web server
+
+- VS Code **Live Server** extension is used as the local HTTP server (no dedicated server container).
+- `index.html` → right-click → "Open with Live Server" → `http://127.0.0.1:5500`
+
+---
+
+## Pages
+
+- `index.html` — setup screen (model selection, scenario, character)
+- `game.html` — game screen (story, action input, sidebar with tabs)
+- `api.js` — all backend fetch calls as ES module exports
+- `utils.js` — shared helpers (showToast, pollHealth, renderTemplate, …)
+- `setup.js` — logic for index.html
+- `game.js` — logic for game.html
+- `style.css` — shared CSS
+- Scenarios and generation parameters in `config.json`
+
+---
+
+## Key settings in game.js
 
 ```js
-env.localModelPath    = '/models/';   // absoluter Pfad ab Root — NICHT './models/'
-env.allowRemoteModels = false;        // nie remote laden
-env.backends.onnx.wasm.wasmPaths = '/libs/'; // absoluter Pfad — NICHT './libs/'
+// Paths must be absolute from root — NOT relative (./…)
+// Relative paths cause double-path bugs because the browser resolves
+// them relative to the current page, not the project root.
 ```
 
-**Wichtig:** Relative Pfade (`./libs/`, `./models/`) führen zu doppelten Pfaden (`/libs/libs/`), weil transformers.js Pfade relativ zur eigenen Datei (`/libs/transformers.min.js`) auflöst.
+---
 
-## Seiten
+## Tests
 
-- `index.html` — Setup-Screen (Modellauswahl, Szenario, Charakter)
-- `game.html` — Spielscreen (Story, Aktionseingabe, Sidebar mit Tabs)
-- `api.js` — alle Backend-Fetch-Calls als ES-Module-Exports
-- `utils.js` — gemeinsame Hilfsfunktionen (showToast, pollHealth, renderTemplate, …)
-- `setup.js` — Logik für index.html
-- `game.js` — Logik für game.html
-- `style.css` — gemeinsames CSS
-- Szenarien und Generierungsparameter in `dungeon-config.json`
+- Headless playthroughs live in `tests/` — configs under `tests/configs/*.json`, script `tests/test_playthrough.py`.
+- **Whenever the DB schema or API endpoints change**, check whether `test_playthrough.py` is affected:
+  - New or renamed fields in the `turns` table → update `TurnRecord` and `Analyzer`.
+  - Changed request/response structure for `/api/games`, `/api/games/{id}/turns`, or `/api/games/{id}/summarize` → update `GameClient` and `PlaythroughRunner`.
+  - New endpoints affecting game setup → integrate into `PlaythroughRunner.run()` as needed.
+- Run: `podman compose run --rm tester`
 
-## Datenbankschema-Dokumentation
+---
 
-- Das aktuelle SQLite-Schema ist in [`datamodell.md`](datamodell.md) als Mermaid-ERD dokumentiert.
-- **Bei jeder Schemaänderung** (neue Spalten, neue Tabellen, geänderte Typen, neue Migrations in `main.py`) muss `datamodell.md` sofort aktualisiert werden.
-- Migrationen werden in `backend/main.py` → `init_db()` per `PRAGMA table_info` geprüft und als `ALTER TABLE` ausgeführt.
+## Database schema documentation
 
-## Modell-Kategorien
+- The current SQLite schema is documented in [`datamodell.md`](datamodell.md) as a Mermaid ERD.
+- **Update `datamodell.md` immediately after any schema change** (new columns, new tables, changed types, new migrations in `main.py`).
+- Migrations are applied in `backend/main.py` → `init_db()` via `PRAGMA table_info` checks and `ALTER TABLE` statements.
 
-- **chatml-Template** (SmolLM2-*-Instruct): ChatML-Format `<|im_start|>role\n...<|im_end|>`
-- **tinyllama-Template** (TinyLlama-Chat): `<|role|>\n...</s>`
-- **completion** (GPT-2, distilgpt2, BLOOM, etc.): Kein Chat-Format — nur Textvervollständigung
+---
 
-## GPU/CPU
+## Model categories
 
-- WebGPU-Verfügbarkeit wird einmalig beim Seitenload geprüft (`navigator.gpu`).
-- Toggle bleibt `disabled` wenn kein WebGPU → kein manueller Override nötig.
+- **chatml template** (SmolLM2-*-Instruct): ChatML format `<|im_start|>role\n...<|im_end|>`
+- **tinyllama template** (TinyLlama-Chat): `<|role|>\n...</s>`
+- **completion** (GPT-2, distilgpt2, BLOOM, etc.): no chat format — plain text completion only
+
+---
+
+## GPU / CPU
+
+- WebGPU availability is checked once on page load (`navigator.gpu`).
+- The toggle stays `disabled` if no WebGPU is detected — no manual override needed.
 - GPU dtype: `q4f16` (chatml/tinyllama), `q8` (completion)
 - CPU dtype: `q4` (chatml/tinyllama), `q8` (completion)

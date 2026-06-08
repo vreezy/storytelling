@@ -3,9 +3,41 @@
 import { initApi } from './api.js';
 
 export async function loadConfig() {
-  const r = await fetch('./dungeon-config.json');
-  if (!r.ok) throw new Error('Failed to load dungeon-config.json');
-  return r.json();
+  const r = await fetch('./config.json');
+  if (!r.ok) throw new Error('Failed to load config.json');
+  const config = await r.json();
+
+  const idxResp = await fetch('./scenarios/index.json');
+  if (!idxResp.ok) throw new Error('Failed to load scenarios/index.json');
+  const { scenarios: ids } = await idxResp.json();
+  if (!Array.isArray(ids) || ids.length === 0) throw new Error('scenarios/index.json must contain a non-empty "scenarios" array');
+
+  config.scenarios = await Promise.all(ids.map(id => loadScenario(id)));
+  return config;
+}
+
+async function loadScenario(id) {
+  const r = await fetch(`./scenarios/${id}.json`);
+  if (!r.ok) throw new Error(`Failed to load scenario: ${id}`);
+  const sc = await r.json();
+  validateScenario(sc, id);
+  return sc;
+}
+
+function validateScenario(sc, filename) {
+  const errors = [];
+  if (!sc.id)   errors.push('missing "id"');
+  if (!sc.name) errors.push('missing "name"');
+  if (sc.id !== filename) errors.push(`"id" ("${sc.id}") does not match filename ("${filename}.json")`);
+  if (sc.cards) {
+    sc.cards.forEach((c, i) => {
+      if (!c.type) errors.push(`card[${i}] missing "type"`);
+      if (!c.name) errors.push(`card[${i}] missing "name"`);
+      const validTypes = ['location', 'npc', 'item', 'faction', 'lore'];
+      if (c.type && !validTypes.includes(c.type)) errors.push(`card[${i}] invalid type "${c.type}"`);
+    });
+  }
+  if (errors.length) throw new Error(`Scenario "${filename}.json" validation failed: ${errors.join('; ')}`);
 }
 
 export { initApi };

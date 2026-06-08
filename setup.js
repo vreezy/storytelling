@@ -21,7 +21,7 @@ $(async function () {
   try {
     state.config = await loadConfig();
   } catch {
-    showToast('Failed to load dungeon-config.json.', 'danger');
+    showToast('Failed to load config.json.', 'danger');
     return;
   }
 
@@ -246,7 +246,7 @@ async function startGame() {
   const globalPrompt   = state.config.systemPrompt || '';
   const scenarioPrompt = sc.id === 'custom'
     ? ($('#custom-prompt').val().trim() || 'You are a dungeon master for a text adventure.')
-    : (sc.systemPrompt || '');
+    : (sc.scenarioPrompt || '');
 
   let game;
   try {

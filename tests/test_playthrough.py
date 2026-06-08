@@ -68,24 +68,52 @@ class TurnRecord:
 # ── DungeonConfig ──────────────────────────────────────────────────────────────
 
 class DungeonConfig:
-    """Loads dungeon-config.json and exposes the pieces MessageBuilder needs."""
+    """Loads config.json + scenarios/<id>.json and exposes the pieces MessageBuilder needs."""
 
-    def __init__(self, path, scenario_id):
-        with open(path, encoding="utf-8") as f:
+    VALID_CARD_TYPES = {"location", "npc", "item", "faction", "lore"}
+
+    def __init__(self, config_path, scenario_id):
+        config_path = Path(config_path)
+        with open(config_path, encoding="utf-8") as f:
             data = json.load(f)
-        self.system_prompt = data.get("systemPrompt", "")
-        self.custom_prompt = data.get("customSystemPrompt", "")
+        self.system_prompt        = data.get("systemPrompt", "")
+        self.custom_prompt        = data.get("customSystemPrompt", "")
         self.context_max_messages = data.get("contextMaxMessages", 15)
-        self.action_prompts = data.get("actionPrompts", {})
-        self.generation = data.get("generation", {})
+        self.action_prompts       = data.get("actionPrompts", {})
+        self.generation           = data.get("generation", {})
 
-        scenario = next(
-            (s for s in data.get("scenarios", []) if s["id"] == scenario_id),
-            None
-        )
-        if not scenario:
-            raise ValueError(f"Scenario '{scenario_id}' not found in dungeon-config.json")
+        # Load scenario from scenarios/<id>.json (project root / scenarios/)
+        scenarios_dir = config_path.parent / "scenarios"
+        scenario_file = scenarios_dir / f"{scenario_id}.json"
+        if not scenario_file.exists():
+            raise FileNotFoundError(
+                f"Scenario file not found: {scenario_file}\n"
+                f"Available: {[p.stem for p in scenarios_dir.glob('*.json') if p.stem != 'index' and p.stem != 'schema']}"
+            )
+        with open(scenario_file, encoding="utf-8") as f:
+            scenario = json.load(f)
+        self._validate_scenario(scenario, scenario_file.name)
         self.scenario = scenario
+
+    @classmethod
+    def _validate_scenario(cls, sc, filename):
+        errors = []
+        if not sc.get("id"):
+            errors.append('missing "id"')
+        if not sc.get("name"):
+            errors.append('missing "name"')
+        expected_id = Path(filename).stem
+        if sc.get("id") and sc["id"] != expected_id:
+            errors.append(f'"id" ("{sc["id"]}") does not match filename ("{filename}")')
+        for i, card in enumerate(sc.get("cards", [])):
+            if not card.get("type"):
+                errors.append(f"card[{i}] missing \"type\"")
+            elif card["type"] not in cls.VALID_CARD_TYPES:
+                errors.append(f"card[{i}] invalid type \"{card['type']}\"")
+            if not card.get("name"):
+                errors.append(f"card[{i}] missing \"name\"")
+        if errors:
+            raise ValueError(f"Scenario \"{filename}\" validation failed: {'; '.join(errors)}")
 
     def build_character_context(self):
         chars = self.scenario.get("mainCharacters", [])
@@ -159,7 +187,7 @@ class MessageBuilder:
 
         sys_parts = [
             self.dc.system_prompt,
-            self.dc.scenario.get("systemPrompt", ""),
+            self.dc.scenario.get("scenarioPrompt", ""),
             self.dc.custom_prompt,
             char_ctx,
             cards_ctx,
@@ -306,7 +334,7 @@ class PlaythroughRunner:
             "scenario_id": self.config["scenario_id"],
             "model_id": self.config["model_id"],
             "system_prompt": self.dc.system_prompt,
-            "scenario_prompt": self.dc.scenario.get("systemPrompt", ""),
+            "scenario_prompt": self.dc.scenario.get("scenarioPrompt", ""),
             "custom_prompt": self.dc.custom_prompt,
             "opening_text": opening_text,
         })
@@ -544,7 +572,7 @@ class Analyzer:
         if lengths and lengths.get("avg", 999) < 50:
             recs.append(
                 f"Responses average only {lengths['avg']} tokens — add an explicit minimum-length "
-                "instruction to systemPrompt, e.g. 'Write at least 4 sentences per response.'"
+                "instruction to scenarioPrompt, e.g. 'Write at least 4 sentences per response.'"
             )
 
         truncated = lengths.get("truncated_turns", []) if lengths else []
@@ -566,7 +594,7 @@ class Analyzer:
             recs.append(
                 f"Repetition detected in {len(repetition['flagged_pairs'])} consecutive turn pairs "
                 f"(>40% trigram overlap). Increase repeat_penalty from {rp} to {rp + 0.1:.1f}. "
-                "Also add 'Never repeat phrases from the previous paragraph' to systemPrompt."
+                "Also add 'Never repeat phrases from the previous paragraph' to scenarioPrompt."
             )
 
         if growth and growth.get("projected_overflow_turn") is not None:
@@ -574,7 +602,7 @@ class Analyzer:
             nc = growth["num_ctx"]
             recs.append(
                 f"Prompt grows ~{growth['growth_rate']} tokens/turn; 80% of num_ctx ({nc}) "
-                f"will be reached around turn {pt}. Consider reducing contextMaxMessages in dungeon-config.json."
+                f"will be reached around turn {pt}. Consider reducing contextMaxMessages in config.json."
             )
 
         sms = compliance.get("starts_mid_sentence", []) if compliance else []
@@ -588,7 +616,7 @@ class Analyzer:
         if ooc:
             recs.append(
                 f"OOC brackets appeared in {len(ooc)} turn(s) (turns {ooc}). "
-                "Add 'No brackets, no meta-commentary' to systemPrompt."
+                "Add 'No brackets, no meta-commentary' to scenarioPrompt."
             )
 
         apologies = compliance.get("contains_apology", []) if compliance else []

@@ -1,0 +1,64 @@
+{
+  "id": "horror",
+  "name": "Cosmic Horror",
+  "icon": "🕯️",
+  "description": "Lovecraftian dread, the unknown, and truths that break minds",
+  "scenarioPrompt": "Cosmic horror. Dread through absence: wrong sounds, mismatched shadows, creeping wrongness. The threat is never fully seen. Build tension slowly. Horror is the moment you understand something you cannot un-know. Restraint over gore. Lovecraftian atmosphere.",
+  "openingText": "The old manor stands exactly where your brother's last letter said it would — three miles past the collapsed mill, through a wood that the locals refuse to name. It is the fourth night of your search, and the fog has followed you since the village. Inside, a single candle burns in an upstairs window. You did not see it lit.",
+  "mainCharacters": [
+    {
+      "name": "Edmund Harlow",
+      "class": "Private Investigator / Former Academic",
+      "description": "Trained as a historian before something he found in an archive changed what he could believe. Now works private cases — mostly missing persons, occasionally things he wishes he hadn't found. Methodical, privately afraid, and constitutionally unable to leave a question alone."
+    }
+  ],
+  "cards": [
+    {
+      "type": "location",
+      "name": "The Manor",
+      "description": "A three-story Victorian stone house, isolated, structurally sound but atmospherically wrong. Interior: entrance hall, parlour, kitchen, study, upstairs bedrooms. The wrongness is in the details — sounds misplaced, shadows off-angle, the proportions of rooms not quite matching the exterior. A candle burned in an upstairs window that was not lit."
+    },
+    {
+      "type": "location",
+      "name": "The Village",
+      "description": "A small settlement at the edge of the unnamed wood. A pub, a church, a post office. The locals are not unfriendly — they simply do not answer questions about the wood, the manor, or anyone who went in that direction. The priest drinks too much. The innkeeper watches the road.",
+      "triggers": "village, town, road, inn, pub, locals, people, market, church, priest, folk"
+    },
+    {
+      "type": "location",
+      "name": "The Study",
+      "description": "Second floor, front-facing. Edmund's brother Robert's last known base of operations in the manor. Desk piled with papers, cross-references, hand-drawn diagrams. Several books left open to marked pages. The notes stop mid-sentence, mid-thought, as if he stood up in the middle of writing and did not return.",
+      "triggers": "study, desk, books, papers, notes, library, shelf, research, writing, documents"
+    },
+    {
+      "type": "location",
+      "name": "The Cellar",
+      "description": "Accessed via a locked door off the kitchen. Stone steps descend to a low-ceilinged space that smells of earth and something older. The lock is new; the door is old. Someone recently replaced it.",
+      "triggers": "cellar, below, basement, stairs, down, locked door, dark, beneath, underground, kitchen"
+    },
+    {
+      "type": "npc",
+      "name": "The Villagers",
+      "description": "Individually ordinary; collectively evasive. Each one has a reason not to discuss the manor. Two generations ago, men went into that wood and some came back changed. Nobody says this directly. They say: best leave it alone. They say: your brother should not have gone.",
+      "triggers": "villager, local, innkeeper, farmer, priest, old man, woman, stranger, ask, speak, talk, question"
+    },
+    {
+      "type": "lore",
+      "name": "Robert's Trail",
+      "description": "Edmund's brother Robert came here three weeks ago, following a reference in a university archive to an 18th-century incident involving the manor's original occupant. His letters grew shorter and stranger. The last one gave only the address and the words: 'There is something in the geometry of this place. Come quickly.' He has not written since.",
+      "triggers": "brother, robert, missing, letter, reason, why, family, find, trail, clue, evidence, archive"
+    },
+    {
+      "type": "lore",
+      "name": "The Ancient Text",
+      "description": "Robert's study contains fragments: a hand-copied diagram of non-Euclidean angles, marginal notes referencing 'the angle between spaces', a name that appears in multiple languages. The original source is a book the university archive listed as lost in 1887. Robert apparently found a copy here.",
+      "triggers": "book, text, tome, symbol, writing, diagram, cipher, page, read, inscription, angle, geometry, latin"
+    },
+    {
+      "type": "lore",
+      "name": "The Wrongness",
+      "description": "It does not announce itself. A footstep on a floor where no one stands. A shadow that does not match its source. A room that feels narrower than it looked from outside. The drip of water that stops the moment you listen for it. The candle that burns with no wax reduction. Whatever is in this manor does not want to be seen directly.",
+      "triggers": "sound, noise, shadow, movement, sense, wrong, creak, breathing, presence, feeling, watching, cold"
+    }
+  ]
+}

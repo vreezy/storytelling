@@ -41,7 +41,7 @@ $(async function () {
   try {
     state.config = await loadConfig();
   } catch {
-    showToast('Failed to load dungeon-config.json.', 'danger');
+    showToast('Failed to load config.json.', 'danger');
     return;
   }
 

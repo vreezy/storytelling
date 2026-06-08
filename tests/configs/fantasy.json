@@ -3,7 +3,7 @@
   "model_id": "mistral:7b-instruct",
   "game_title": "Playthrough Test — Fantasy",
   "base_url": "http://backend:8000",
-  "dungeon_config_path": "dungeon-config.json",
+  "dungeon_config_path": "config.json",
   "reports_dir": "tests/reports",
   "generation": {
     "temperature": 0.75,

@@ -1,6 +1,6 @@
-# Datenbankmodell — StoryTelling
+# Database Model — StoryTelling
 
-Dieses Dokument beschreibt das aktuelle SQLite-Schema. **Bei jeder Schemaänderung muss dieses Dokument sofort aktualisiert werden** (siehe CLAUDE.md).
+Current SQLite schema. **Update this document immediately after any schema change** (see CLAUDE.md).
 
 ```mermaid
 erDiagram
@@ -87,34 +87,34 @@ erDiagram
         DATETIME last_used_at
     }
 
-    games ||--o{ turns : "hat"
-    games ||--o| characters : "hat"
-    games ||--o{ world_cards : "hat"
-    games ||--o{ bookmarks : "hat"
-    turns ||--o{ bookmarks : "referenziert"
+    games ||--o{ turns : "has"
+    games ||--o| characters : "has"
+    games ||--o{ world_cards : "has"
+    games ||--o{ bookmarks : "has"
+    turns ||--o{ bookmarks : "references"
 ```
 
-## Felder (Erläuterungen)
+## Field notes
 
 ### games
-| Feld | Beschreibung |
+| Field | Description |
 |---|---|
-| `system_prompt` | Globaler DM-Prompt (Schreibstil, allg. Regeln), editierbar im Plot-Tab |
-| `scenario_prompt` | Szenario-spezifischer DM-Prompt (Weltbeschreibung, Szenario-Regeln), editierbar im Scenario-Tab |
-| `opening_text` | Eröffnungstext der Story (wird als erstes Narrativ angezeigt) |
-| `story_summary` | Fortlaufende Zusammenfassung der aus dem Kontextfenster gekürzten Spielzüge |
-| `num_predict` | Per-Game Output-Token-Limit (25–200, Standard: 150), editierbar im Model-Tab |
+| `system_prompt` | Global narrator prompt (writing style, general rules) — editable in the Plot tab |
+| `scenario_prompt` | Scenario-specific narrator prompt (world setting, scenario rules) — editable in the Scenario tab |
+| `opening_text` | Opening narrative shown as the first story segment |
+| `story_summary` | Running summary of turns that have been trimmed from the context window |
+| `num_predict` | Per-game output token limit (25–200, default: 150) — editable in the Model tab |
 
 ### turns
-| Feld | Beschreibung |
+| Field | Description |
 |---|---|
 | `action_type` | `do` / `say` / `story` / `continue` |
-| `full_prompt` | JSON der an Ollama gesendeten messages |
-| `ollama_request` | Vollständiger Ollama-Request-Body |
+| `full_prompt` | JSON array of messages sent to Ollama |
+| `ollama_request` | Full Ollama request body |
 
 ### world_cards
-| Feld | Beschreibung |
+| Field | Description |
 |---|---|
 | `type` | `location` / `npc` / `item` / `faction` / `lore` |
-| `active` | 0 = inaktiv (nicht in Kontext injiziert) |
-| `triggers` | Kommagetrennte Schlüsselwörter; leer = immer injiziert (pinned); gesetzt = nur injiziert wenn ein Keyword im aktuellen Spielerzug oder den letzten 2 Nachrichten vorkommt |
+| `active` | 0 = inactive (not injected into context) |
+| `triggers` | Comma-separated keywords; empty = always injected (pinned); set = only injected when a keyword appears in the current player action or the last 2 messages |
