@@ -28,8 +28,7 @@
           <div id="context-bar" class="progress-bar bg-success" role="progressbar"
                style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
         </div>
-        <button id="debug-btn" class="btn btn-sm btn-outline-secondary" title="Prompt Debug Editor">🔧</button>
-        <button id="options-btn" class="btn btn-sm btn-outline-secondary" title="Options">⚙ Options</button>
+<button id="options-btn" class="btn btn-sm btn-outline-secondary" title="Options">⚙ Options</button>
       </div>
     </div>
 
@@ -117,6 +116,9 @@
           <li class="nav-item">
             <button class="nav-link small py-1 px-2" data-tab="plot">Plot</button>
           </li>
+          <li class="nav-item">
+            <button class="nav-link small py-1 px-2" data-tab="debug">Debug</button>
+          </li>
         </ul>
 
         <!-- Character tab -->
@@ -179,86 +181,60 @@
           <button id="plot-save-btn" class="btn btn-sm btn-outline-primary mt-2 w-100">Save</button>
         </div>
 
+        <!-- Debug tab -->
+        <div id="tab-debug" class="flex-grow-1 overflow-auto p-3 d-none">
+          <p class="small text-secondary mb-3">Edits apply to the next action sent.</p>
+
+          <label class="form-label fw-semibold small">Global System Prompt</label>
+          <textarea id="debug-global-prompt" class="form-control form-control-sm font-monospace mb-3" rows="5"></textarea>
+
+          <label class="form-label fw-semibold small">Scenario Prompt</label>
+          <textarea id="debug-scenario-prompt" class="form-control form-control-sm font-monospace mb-3" rows="5"></textarea>
+
+          <label class="form-label fw-semibold small">Custom Prompt Extension</label>
+          <textarea id="debug-custom-prompt" class="form-control form-control-sm font-monospace mb-3" rows="3" readonly></textarea>
+
+          <label class="form-label fw-semibold small">Character Context <span class="text-secondary">(computed)</span></label>
+          <input id="debug-char-context" type="text" class="form-control form-control-sm font-monospace mb-3" readonly>
+
+          <label class="form-label fw-semibold small">Action Prompt — Do</label>
+          <textarea id="debug-action-do" class="form-control form-control-sm font-monospace mb-2" rows="2"></textarea>
+
+          <label class="form-label fw-semibold small">Action Prompt — Say</label>
+          <textarea id="debug-action-say" class="form-control form-control-sm font-monospace mb-2" rows="2"></textarea>
+
+          <label class="form-label fw-semibold small">Action Prompt — Story</label>
+          <textarea id="debug-action-story" class="form-control form-control-sm font-monospace mb-3" rows="2"></textarea>
+
+          <hr class="border-secondary">
+
+          <label class="form-label fw-semibold small">
+            Combined System Content
+            <span class="text-secondary">(action type: <span id="debug-active-action">do</span>)</span>
+          </label>
+          <textarea id="debug-combined" class="form-control form-control-sm font-monospace mb-3" rows="6" readonly></textarea>
+
+          <label class="form-label fw-semibold small">Last Messages Sent to Ollama <span class="text-secondary">(JSON)</span></label>
+          <textarea id="debug-last-prompt" class="form-control form-control-sm font-monospace mb-3" rows="10" readonly></textarea>
+
+          <hr class="border-secondary">
+
+          <label class="form-label fw-semibold small">
+            Next Prompt
+            <span class="text-secondary">(action type: <span id="debug-next-action-type">do</span>)</span>
+          </label>
+          <label class="small text-secondary">Current action input</label>
+          <input id="debug-action-preview" type="text" class="form-control form-control-sm font-monospace mb-2" readonly>
+          <textarea id="debug-next-prompt" class="form-control form-control-sm font-monospace mb-3" rows="12" readonly></textarea>
+
+          <hr class="border-secondary">
+
+          <div class="fw-semibold small mb-2">Prompt Assembly</div>
+          <div id="debug-prompt-diagram"></div>
+        </div>
+
       </div>
 
-    </div>
-  </div>
-
-  <!-- ====== DEBUG MODAL (full prompt editor) ====== -->
-  <div class="modal fade" id="debug-modal" tabindex="-1">
-    <div class="modal-dialog modal-xl modal-dialog-scrollable">
-      <div class="modal-content">
-        <div class="modal-header py-2">
-          <h6 class="modal-title mb-0">🔧 Prompt Debug Editor</h6>
-          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-        </div>
-        <div class="modal-body">
-          <div class="row g-3 mb-3">
-            <div class="col-12 col-md-6">
-              <label class="form-label fw-semibold small">Global System Prompt</label>
-              <textarea id="debug-global-prompt" class="form-control form-control-sm font-monospace" rows="5"></textarea>
-            </div>
-            <div class="col-12 col-md-6">
-              <label class="form-label fw-semibold small">Scenario Prompt</label>
-              <textarea id="debug-scenario-prompt" class="form-control form-control-sm font-monospace" rows="5"></textarea>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold small">Custom Prompt Extension</label>
-            <textarea id="debug-custom-prompt" class="form-control form-control-sm font-monospace" rows="3" readonly></textarea>
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold small">Character Context <span class="text-secondary">(computed)</span></label>
-            <input id="debug-char-context" type="text" class="form-control form-control-sm font-monospace" readonly>
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold small">Action Prompts</label>
-            <div class="row g-2">
-              <div class="col-4">
-                <label class="form-label small text-secondary mb-1">Do</label>
-                <textarea id="debug-action-do" class="form-control form-control-sm font-monospace" rows="2"></textarea>
-              </div>
-              <div class="col-4">
-                <label class="form-label small text-secondary mb-1">Say</label>
-                <textarea id="debug-action-say" class="form-control form-control-sm font-monospace" rows="2"></textarea>
-              </div>
-              <div class="col-4">
-                <label class="form-label small text-secondary mb-1">Story</label>
-                <textarea id="debug-action-story" class="form-control form-control-sm font-monospace" rows="2"></textarea>
-              </div>
-            </div>
-          </div>
-          <hr class="border-secondary">
-          <div class="mb-3">
-            <label class="form-label fw-semibold small">
-              Combined System Content
-              <span class="text-secondary">(preview for current action type: <span id="debug-active-action">do</span>)</span>
-            </label>
-            <textarea id="debug-combined" class="form-control form-control-sm font-monospace" rows="6" readonly></textarea>
-          </div>
-          <div class="mb-3">
-            <label class="form-label fw-semibold small">Last Messages Sent to Ollama <span class="text-secondary">(JSON)</span></label>
-            <textarea id="debug-last-prompt" class="form-control form-control-sm font-monospace" rows="10" readonly></textarea>
-          </div>
-          <hr class="border-secondary">
-          <div class="mb-3">
-            <label class="form-label fw-semibold small">
-              Next Prompt
-              <span class="text-secondary">(full messages array if Send is pressed now, action type:
-                <span id="debug-next-action-type">do</span>)</span>
-            </label>
-            <div class="mb-2">
-              <label class="small text-secondary">Current action input</label>
-              <input id="debug-action-preview" type="text" class="form-control form-control-sm font-monospace" readonly>
-            </div>
-            <textarea id="debug-next-prompt" class="form-control form-control-sm font-monospace" rows="12" readonly></textarea>
-          </div>
-        </div>
-        <div class="modal-footer py-2">
-          <small class="text-secondary me-auto">Edits to prompts above apply to the next action</small>
-          <button type="button" class="btn btn-sm btn-secondary" data-bs-dismiss="modal">Close</button>
-        </div>
-      </div>
     </div>
   </div>
 

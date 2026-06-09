@@ -1,0 +1,10 @@
+# Ignore all scenario files by default — only track the ones listed below.
+*.json
+!custom.json
+!fantasy.json
+!horror.json
+!index.json
+!overlord.json
+!schema.json
+!scifi.json
+!zootopia.json

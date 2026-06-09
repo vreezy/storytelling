@@ -259,6 +259,7 @@ async function generateContinuation(actionText, actionType) {
       state.messages = state.messages.slice(-maxMsg);
     }
     updateContextBar();
+    if (!$('#tab-debug').hasClass('d-none')) refreshDebugTab();
 
   } catch (err) {
     streamSpan.text(`[Error: ${err.message}]\n`).addClass('text-danger').removeClass('streaming-cursor');
@@ -330,6 +331,7 @@ async function undo() {
   rebuildStoryDisplay();
   updateContextBar();
   if (state.segments.length === 0) $('#undo-btn').prop('disabled', true);
+  if (!$('#tab-debug').hasClass('d-none')) refreshDebugTab();
 }
 
 // ── Retry ─────────────────────────────────────────────────────────────────────
@@ -458,8 +460,8 @@ function updateDebugPanel(doneMsg, messages, params) {
   $('#dbg-ollama-req').val(JSON.stringify(params, null, 2));
 }
 
-// ── Debug modal ───────────────────────────────────────────────────────────────
-function openDebugModal() {
+// ── Debug tab ─────────────────────────────────────────────────────────────────
+function refreshDebugTab() {
   const ap = state.config.actionPrompts || {};
   $('#debug-global-prompt').val(state.systemPrompt || '');
   $('#debug-scenario-prompt').val(state.scenarioPrompt || '');
@@ -474,23 +476,6 @@ function openDebugModal() {
   );
   updateDebugCombined();
   buildNextPromptPreview();
-
-  const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('debug-modal'));
-  modal.show();
-
-  const $modal = $('#debug-modal');
-  $modal.off('input.nextprompt').on(
-    'input.nextprompt',
-    '#debug-global-prompt, #debug-scenario-prompt, #debug-action-do, #debug-action-say, #debug-action-story',
-    buildNextPromptPreview,
-  );
-  $('#action-type').off('change.nextprompt').on('change.nextprompt', function () {
-    if ($('#debug-modal').hasClass('show')) buildNextPromptPreview();
-  });
-  document.getElementById('debug-modal').addEventListener('hidden.bs.modal', () => {
-    $modal.off('input.nextprompt');
-    $('#action-type').off('change.nextprompt');
-  }, { once: true });
 }
 
 function updateDebugCombined() {
@@ -532,6 +517,100 @@ function buildNextPromptPreview() {
   $('#debug-next-prompt').val(JSON.stringify(messages, null, 2));
   $('#debug-next-action-type').text(actionType);
   $('#debug-action-preview').val($('#action-input').val());
+  renderPromptDiagram();
+}
+
+function renderPromptDiagram() {
+  const $diag = $('#debug-prompt-diagram');
+  if ($diag.length === 0 || $('#tab-debug').hasClass('d-none')) return;
+
+  const actionType = $('#action-type').val() || 'do';
+  const actionText = $('#action-input').val().trim() || '(type an action to preview)';
+  const playerLine = buildPlayerActionText(actionText, actionType);
+
+  function textStats(text) {
+    const chars  = text.length;
+    const words  = text.trim() ? text.trim().split(/\s+/).length : 0;
+    const tokens = Math.round(chars / 4);
+    return { chars, words, tokens };
+  }
+  function addStats(a, b) {
+    return { chars: a.chars + b.chars, words: a.words + b.words, tokens: a.tokens + b.tokens };
+  }
+  const zeroStats = { chars: 0, words: 0, tokens: 0 };
+  function fmtStats(s) {
+    return `${s.words.toLocaleString()} words &nbsp;·&nbsp; ${s.chars.toLocaleString()} chars &nbsp;·&nbsp; ~${s.tokens.toLocaleString()} tokens`;
+  }
+
+  const sysSources = [
+    { label: 'Global System Prompt',          color: '#4a9eff', value: $('#debug-global-prompt').val() },
+    { label: 'Scenario Prompt',               color: '#51cf66', value: $('#debug-scenario-prompt').val() },
+    { label: 'Custom Extension',              color: '#22d3ee', value: state.customPrompt || '' },
+    { label: 'Character Context',             color: '#fbbf24', value: buildCharacterContext() },
+    { label: 'World Cards',                   color: '#f97316', value: buildCardsContext(playerLine) },
+    { label: 'Story Summary',                 color: '#a78bfa', value: state.storySummary ? `Story so far: ${state.storySummary}` : '' },
+    { label: `Action Prompt (${actionType})`, color: '#f87171', value: ['do','say','story'].includes(actionType) ? ($('#debug-action-' + actionType).val() || '') : '' },
+  ];
+
+  function srcBlock(s) {
+    const empty = !s.value.trim();
+    const st = empty ? null : textStats(s.value);
+    return `<div class="debug-src-block${empty ? ' debug-src-empty' : ''}" style="border-left-color:${s.color}">` +
+      `<span class="debug-src-label" style="color:${s.color}">${s.label}</span>` +
+      (st ? `<span class="debug-src-stats">${fmtStats(st)}</span>` : '') +
+      `<pre class="debug-src-pre">${escHtml(empty ? '(empty)' : s.value)}</pre>` +
+      `</div>`;
+  }
+
+  const sysTotal = sysSources.reduce((acc, s) => s.value.trim() ? addStats(acc, textStats(s.value)) : acc, zeroStats);
+
+  let html = `<div class="debug-pipeline">`;
+  html += `<div class="debug-pipeline-hdr">⬡ System Message Assembly` +
+    `<span class="debug-hdr-stats">${fmtStats(sysTotal)}</span></div>`;
+  html += sysSources.map(srcBlock).join('');
+
+  const history = state.messages.slice();
+  const histDisplay = history.length > 0 && history[0].role === 'assistant' ? history.slice(1) : history;
+  const histTotal = histDisplay.reduce((acc, m) => addStats(acc, textStats(m.content)), zeroStats);
+  html += `<div class="debug-pipeline-sep">↕ Message History (${histDisplay.length} turn${histDisplay.length !== 1 ? 's' : ''})` +
+    (histDisplay.length ? `<span class="debug-sep-stats">${fmtStats(histTotal)}</span>` : '') +
+    `</div>`;
+
+  if (histDisplay.length === 0) {
+    html += `<div class="debug-src-block debug-src-empty" style="border-left-color:#6b7280">` +
+      `<span class="debug-src-label" style="color:#6b7280">history</span>` +
+      `<pre class="debug-src-pre">(no turns yet)</pre></div>`;
+  } else {
+    for (const msg of histDisplay) {
+      const roleColor = msg.role === 'user' ? '#5aba6e' : '#a0a0c0';
+      const st = textStats(msg.content);
+      html += `<div class="debug-src-block" style="border-left-color:${roleColor}">` +
+        `<span class="debug-src-label" style="color:${roleColor}">[${msg.role}]</span>` +
+        `<span class="debug-src-stats">${fmtStats(st)}</span>` +
+        `<pre class="debug-src-pre">${escHtml(msg.content)}</pre></div>`;
+    }
+  }
+
+  const actionStats = textStats(playerLine);
+  html += `<div class="debug-pipeline-sep">↓ Current Action` +
+    `<span class="debug-sep-stats">${fmtStats(actionStats)}</span></div>`;
+  html += `<div class="debug-src-block" style="border-left-color:#10b981">` +
+    `<span class="debug-src-label" style="color:#10b981">player → user message</span>` +
+    `<span class="debug-src-stats">${fmtStats(actionStats)}</span>` +
+    `<pre class="debug-src-pre">${escHtml(playerLine)}</pre></div>`;
+
+  const grandTotal = addStats(addStats(sysTotal, histTotal), actionStats);
+  html += `<div class="debug-pipeline-total">` +
+    `<span class="debug-total-label">Total next prompt</span>` +
+    `<span class="debug-total-stats">${fmtStats(grandTotal)}</span>` +
+    `</div>`;
+
+  html += `</div>`;
+  $diag.html(html);
+}
+
+function escHtml(str) {
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -745,10 +824,11 @@ function bindEvents() {
     const tab = $(this).data('tab');
     $('#sidebar-tabs .nav-link').removeClass('active');
     $(this).addClass('active');
-    $('#tab-char, #tab-world, #tab-model, #tab-scenario, #tab-plot').addClass('d-none');
+    $('#tab-char, #tab-world, #tab-model, #tab-scenario, #tab-plot, #tab-debug').addClass('d-none');
     $(`#tab-${tab}`).removeClass('d-none');
     if (tab === 'world') renderWorldCards();
     if (tab === 'model') renderModelCards();
+    if (tab === 'debug') refreshDebugTab();
   });
 
   // Model tab: output token range
@@ -833,28 +913,29 @@ function bindEvents() {
   $('#undo-btn').on('click', undo);
   $('#retry-btn').on('click', retry);
   $('#continue-btn').on('click', continueStory);
-  $('#debug-btn').on('click', openDebugModal);
-
   // Enter to send
   $('#action-input').on('keydown', function (e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAction(); }
   });
 
-  // Debug modal — live prompt editing syncs to state
+  // Debug tab — live prompt editing syncs to state
   $('#debug-global-prompt').on('input', function () {
-    state.systemPrompt = $(this).val(); updateDebugCombined();
+    state.systemPrompt = $(this).val(); updateDebugCombined(); buildNextPromptPreview();
   });
   $('#debug-scenario-prompt').on('input', function () {
-    state.scenarioPrompt = $(this).val(); updateDebugCombined();
+    state.scenarioPrompt = $(this).val(); updateDebugCombined(); buildNextPromptPreview();
   });
   $('#debug-action-do').on('input', function () {
-    state.config.actionPrompts.do = $(this).val(); updateDebugCombined();
+    state.config.actionPrompts.do = $(this).val(); updateDebugCombined(); buildNextPromptPreview();
   });
   $('#debug-action-say').on('input', function () {
-    state.config.actionPrompts.say = $(this).val(); updateDebugCombined();
+    state.config.actionPrompts.say = $(this).val(); updateDebugCombined(); buildNextPromptPreview();
   });
   $('#debug-action-story').on('input', function () {
-    state.config.actionPrompts.story = $(this).val(); updateDebugCombined();
+    state.config.actionPrompts.story = $(this).val(); updateDebugCombined(); buildNextPromptPreview();
+  });
+  $('#action-type, #action-input').on('change input', function () {
+    if (!$('#tab-debug').hasClass('d-none')) buildNextPromptPreview();
   });
 
   // Resizable sidebar
@@ -868,7 +949,7 @@ function bindEvents() {
   });
   $(document).on('mousemove', function (e) {
     if (!resizing) return;
-    const newW = Math.max(160, Math.min(600, startW - (e.clientX - startX)));
+    const newW = Math.max(160, startW - (e.clientX - startX));
     $('#char-sheet').css('width', newW + 'px');
   });
   $(document).on('mouseup', function () {
