@@ -97,6 +97,8 @@
     "maxNewTokens": 200,
     "temperature": 0.75,
     "repetitionPenalty": 1.1,
-    "numCtx": 4096
+    "numCtx": 4096,
+    "numGpu": 99,
+    "numBatch": 512
   }
 }

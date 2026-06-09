@@ -481,16 +481,21 @@ async def generate_turn(game_id: int, request: Request):
     num_predict    = body.get("num_predict", 200)
     repeat_penalty = body.get("repeat_penalty", 1.1)
     num_ctx        = body.get("num_ctx", 4096)
+    num_gpu        = body.get("num_gpu", 99)
+    num_batch      = body.get("num_batch", 512)
 
     ollama_req = {
-        "model": model_id,
-        "messages": messages,
-        "stream": True,
+        "model":      model_id,
+        "messages":   messages,
+        "stream":     True,
+        "keep_alive": -1,
         "options": {
             "temperature":    temperature,
             "num_predict":    num_predict,
             "repeat_penalty": repeat_penalty,
             "num_ctx":        num_ctx,
+            "num_gpu":        num_gpu,
+            "num_batch":      num_batch,
         },
     }
     full_prompt = json.dumps(messages, ensure_ascii=False, indent=2)

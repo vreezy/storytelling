@@ -201,7 +201,9 @@ async function generateContinuation(actionText, actionType) {
       temperature:    gen.temperature ?? 0.75,
       num_predict:    state.numPredict,
       repeat_penalty: gen.repetitionPenalty ?? 1.1,
-      num_ctx:        gen.numCtx ?? 4096,
+      num_ctx:        gen.numCtx   ?? 4096,
+      num_gpu:        gen.numGpu   ?? 99,
+      num_batch:      gen.numBatch ?? 512,
     };
 
     await streamTurn(
