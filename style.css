@@ -1,3 +1,8 @@
+/* Model switcher dropdown */
+.model-dropdown-item { white-space: normal; line-height: 1.3; }
+.model-item-desc { font-size: .78rem; color: var(--bs-secondary-color); padding-left: 1.1rem; }
+.model-check { width: .9rem; display: inline-block; color: var(--bs-primary); font-size: .8rem; }
+
 /* Scenario card interaction */
 .scenario-card { cursor: pointer; transition: border-color .15s, background-color .15s; }
 .scenario-card:hover { background-color: rgba(255,255,255,.04); }

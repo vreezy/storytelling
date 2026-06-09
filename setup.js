@@ -95,10 +95,13 @@ async function openModelsModal() {
     const isInstalled = installed.some(n => n === m.id || n.startsWith(m.id + ':'));
     const sizeStr     = m.sizeMb >= 1000 ? `${(m.sizeMb / 1000).toFixed(1)} GB` : `${m.sizeMb} MB`;
     const $row = renderTemplate('tmpl-model-row', {
-      name:      m.name,
-      id:        m.id,
-      size:      sizeStr,
-      nsfwBadge: m.nsfw ? '<span class="badge bg-danger">18+</span>' : '',
+      name:        m.name,
+      id:          m.id,
+      description: m.description || '',
+      size:        sizeStr,
+      paramsBadge: m.parameters ? `<span class="badge bg-secondary">${m.parameters}</span>` : '—',
+      nsfwBadge:   m.nsfw ? '<span class="badge bg-danger">18+</span>' : '',
+      linkHtml:    m.link ? `<a href="${m.link}" target="_blank" rel="noopener" class="text-secondary" title="View model page">🔗</a>` : '',
     });
     $row.find('tr').attr('data-model-id', m.id);
     renderModelRowAction($row.find('tr'), m.id, isInstalled);

@@ -38,7 +38,7 @@
 
       <!-- Left: story + action input -->
       <div class="d-flex flex-column flex-grow-1 overflow-hidden">
-        <div id="story-text" class="flex-grow-1 overflow-auto p-3 p-md-4"></div>
+        <div id="story-text" class="flex-grow-1 overflow-auto p-3 p-md-4 container"></div>
 
         <!-- Debug panel (collapsible) -->
         <div id="debug-panel" class="border-top d-none">
@@ -133,6 +133,12 @@
 
         <!-- Model tab -->
         <div id="tab-model" class="flex-grow-1 overflow-auto p-3 d-none">
+          <!-- Model switcher -->
+          <div id="model-cards-list" class="mb-3">
+            <div class="text-secondary small text-center py-3">Loading models…</div>
+          </div>
+          <hr class="border-secondary opacity-25 mb-3 mt-0">
+          <!-- Generation settings -->
           <label class="small text-secondary d-block mb-1">
             Output tokens: <strong id="num-predict-val">150</strong>
           </label>

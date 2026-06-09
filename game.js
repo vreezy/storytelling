@@ -7,7 +7,7 @@ import {
   getGame, getCharacter, getCards, putCharacter, putGame,
   createCard, putCard, deleteCard,
   streamTurn, putTurn, undoTurn, getStats, summarizeGame,
-  getGameScenario,
+  getGameScenario, getModels,
 } from './api.js';
 
 // ── Active segment edit cleanup handle ────────────────────────────────────────
@@ -273,6 +273,8 @@ function buildMessages(actionType, playerLine) {
   const actionPrompt = actionType === 'continue'
     ? ''
     : (state.config.actionPrompts?.[actionType] || '');
+  const continueMsg = actionType === 'continue'
+    ? (state.config.actionPrompts?.continue || 'Continue.') : null;
   const cardsCtx     = buildCardsContext(playerLine || '');
   let sysContent = [
     state.systemPrompt,
@@ -297,6 +299,8 @@ function buildMessages(actionType, playerLine) {
 
   if (playerLine) {
     msgs.push({ role: 'user', content: playerLine });
+  } else if (continueMsg) {
+    msgs.push({ role: 'user', content: continueMsg });
   }
 
   return msgs;
@@ -594,6 +598,82 @@ function renderWorldCards() {
   state.cards.forEach(card => $list.append(buildCardEl(card)));
 }
 
+// ── Model switcher ────────────────────────────────────────────────────────────
+async function renderModelCards() {
+  const $list = $('#model-cards-list');
+  $list.html('<div class="text-secondary small text-center py-3">Loading…</div>');
+
+  let installedNames = [];
+  try {
+    const data = await getModels();
+    installedNames = (data.models || []).map(m => m.name);
+  } catch {
+    $list.html('<div class="text-danger small text-center py-3">Could not load models.</div>');
+    return;
+  }
+
+  const available = (state.config.availableModels || []).filter(m =>
+    installedNames.some(n => n === m.id || n.startsWith(m.id + ':'))
+  );
+
+  if (!available.length) {
+    $list.html('<div class="text-secondary small text-center py-3">No installed models found.</div>');
+    return;
+  }
+
+  const active = available.find(m => m.id === state.modelId) || available[0];
+
+  const $trigger = $(`
+    <button class="btn btn-outline-secondary dropdown-toggle w-100 text-start d-flex align-items-center gap-2"
+            type="button" data-bs-toggle="dropdown" aria-expanded="false">
+      <span class="flex-grow-1 fw-semibold text-truncate">${active.name}</span>
+      ${active.parameters ? `<span class="badge bg-secondary">${active.parameters}</span>` : ''}
+      ${active.nsfw ? '<span class="badge bg-danger">18+</span>' : ''}
+    </button>
+  `);
+
+  const $menu = $('<ul class="dropdown-menu w-100 shadow py-1"></ul>');
+
+  available.forEach(m => {
+    const isActive = m.id === state.modelId;
+    const $item = $(`
+      <li>
+        <button class="dropdown-item model-dropdown-item py-2 px-3${isActive ? ' active' : ''}" type="button">
+          <div class="d-flex align-items-center gap-1 mb-1">
+            ${isActive ? '<span class="model-check">✓</span>' : '<span class="model-check"></span>'}
+            <span class="fw-semibold">${m.name}</span>
+            ${m.parameters ? `<span class="badge bg-secondary ms-1">${m.parameters}</span>` : ''}
+            ${m.nsfw ? '<span class="badge bg-danger ms-1">18+</span>' : ''}
+          </div>
+          ${m.description ? `<div class="model-item-desc">${m.description}</div>` : ''}
+        </button>
+      </li>
+    `);
+
+    if (!isActive) {
+      $item.find('button').on('click', async () => {
+        $trigger.prop('disabled', true);
+        try {
+          await putGame(state.gameId, { model_id: m.id });
+          state.modelId = m.id;
+          localStorage.setItem('dungeon_last_model', m.id);
+          showToast(`Switched to ${m.name}.`, 'success');
+          renderModelCards();
+        } catch {
+          $trigger.prop('disabled', false);
+          showToast('Failed to switch model.', 'danger');
+        }
+      });
+    }
+
+    $menu.append($item);
+  });
+
+  $list.empty().append(
+    $('<div class="dropdown"></div>').append($trigger, $menu)
+  );
+}
+
 function buildCardEl(card) {
   const $tmpl = renderTemplate('tmpl-world-card');
   const $el   = $tmpl.find('.card');
@@ -655,6 +735,7 @@ function bindEvents() {
     $('#tab-char, #tab-world, #tab-model, #tab-scenario, #tab-plot').addClass('d-none');
     $(`#tab-${tab}`).removeClass('d-none');
     if (tab === 'world') renderWorldCards();
+    if (tab === 'model') renderModelCards();
   });
 
   // Model tab: output token range

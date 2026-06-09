@@ -7,37 +7,82 @@
       "id": "smollm2:135m",
       "name": "SmolLM2 135M Instruct",
       "sizeMb": 270,
-      "nsfw": false
+      "nsfw": false,
+      "parameters": "135M",
+      "description": "Tiny but surprisingly capable. Best for very constrained hardware or fast iteration.",
+      "link": "https://ollama.com/library/smollm2"
     },
     {
       "id": "smollm2:360m",
       "name": "SmolLM2 360M Instruct",
       "sizeMb": 230,
-      "nsfw": false
+      "nsfw": false,
+      "parameters": "360M",
+      "description": "Compact and quick. Good for lightweight story generation with low memory overhead.",
+      "link": "https://ollama.com/library/smollm2"
     },
     {
       "id": "smollm2:1.7b",
       "name": "SmolLM2 1.7B Instruct",
       "sizeMb": 1000,
-      "nsfw": false
+      "nsfw": false,
+      "parameters": "1.7B",
+      "description": "The largest SmolLM2 variant — noticeably better coherence and vocabulary than the smaller siblings.",
+      "link": "https://ollama.com/library/smollm2"
     },
     {
       "id": "mistral:7b-instruct",
       "name": "Mistral 7B Instruct",
       "sizeMb": 4100,
-      "nsfw": false
+      "nsfw": false,
+      "parameters": "7B",
+      "description": "Fast, capable instruction-following model. Reliable all-rounder for interactive storytelling.",
+      "link": "https://ollama.com/library/mistral"
     },
     {
       "id": "hf.co/TheBloke/Chronomaid-Storytelling-13B-GGUF:Q4_K_M",
       "name": "Chronomaid 13B Storytelling",
       "sizeMb": 7900,
-      "nsfw": true
+      "nsfw": true,
+      "parameters": "13B",
+      "description": "Fine-tuned for creative fiction and mature narratives. Rich, immersive writing style with strong character voice.",
+      "link": "https://huggingface.co/TheBloke/Chronomaid-Storytelling-13B-GGUF"
     },
     {
       "id": "dolphin-mistral:7b",
       "name": "Dolphin Mistral 7B",
       "sizeMb": 4100,
-      "nsfw": true
+      "nsfw": true,
+      "parameters": "7B",
+      "description": "Uncensored Mistral variant by Cognitive Computations. Fewer guardrails, suited for adult content scenarios.",
+      "link": "https://ollama.com/library/dolphin-mistral"
+    },
+    {
+      "id": "dolphin3:8b",
+      "name": "Dolphin 3.0 Llama 3.1 8B",
+      "sizeMb": 4700,
+      "nsfw": true,
+      "parameters": "8B",
+      "description": "Direct successor to Dolphin Mistral — same uncensored philosophy, built on Llama 3.1 8B. Noticeably better coherence, instruction following, and narrative range.",
+      "link": "https://ollama.com/library/dolphin3"
+    },
+    {
+      "id": "hermes3:8b",
+      "name": "Nous Hermes 3 8B",
+      "sizeMb": 4700,
+      "nsfw": true,
+      "parameters": "8B",
+      "description": "Nous Research fine-tune on Llama 3.1 8B. Strong at roleplay, character voice, and creative writing with minimal refusals.",
+      "link": "https://ollama.com/library/hermes3"
+    },
+    {
+      "id": "mannix/llama3.1-8b-abliterated",
+      "name": "Llama 3.1 8B Abliterated",
+      "sizeMb": 4700,
+      "nsfw": true,
+      "parameters": "8B",
+      "description": "Meta Llama 3.1 8B with refusal vectors removed (abliteration). No content filters whatsoever — use responsibly.",
+      "link": "https://ollama.com/mannix/llama3.1-8b-abliterated"
     }
   ],
   "systemPrompt": "You are a narrator for an interactive story. Respond directly to the player's last action. Write exactly one short paragraph (3–4 sentences) in second person, present tense. End on a complete sentence. No meta-commentary, no questions directed at the player, no game mechanics text.",
@@ -45,7 +90,8 @@
   "actionPrompts": {
     "do": "The player performed an action. Open with its immediate outcome. Show the environment and any present characters reacting visibly.",
     "say": "The player spoke those exact words. Briefly echo them, then show the other characters respond — expressions, body language, a reply if fitting.",
-    "story": "The narrator redirects. Follow this new direction seamlessly, staying fully in scene."
+    "story": "The narrator redirects. Follow this new direction seamlessly, staying fully in scene.",
+    "continue": "Continue the story from exactly where it left off. One short paragraph, no recap."
   },
   "generation": {
     "maxNewTokens": 150,
