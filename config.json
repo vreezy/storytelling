@@ -94,7 +94,7 @@
     "continue": "Continue the story from exactly where it left off. One short paragraph, no recap."
   },
   "generation": {
-    "maxNewTokens": 150,
+    "maxNewTokens": 200,
     "temperature": 0.75,
     "repetitionPenalty": 1.1,
     "numCtx": 4096

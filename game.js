@@ -30,7 +30,7 @@ const state = {
   generating:     false,
   summarizing:    false,
   storySummary:   '',
-  numPredict:     150,
+  numPredict:     200,
   sidebarOpen:    false,
 };
 
@@ -75,7 +75,7 @@ async function loadGame(id) {
   state.scenarioPrompt  = game.scenario_prompt || '';
   state.customPrompt    = game.custom_prompt || '';
   state.storySummary    = game.story_summary || '';
-  state.numPredict      = game.num_predict ?? 150;
+  state.numPredict      = game.num_predict ?? 200;
   state.character    = { name: '', description: '', class: '', stats: null, notes: '' };
   state.messages     = [];
   state.segments     = [];
@@ -130,7 +130,7 @@ async function loadGame(id) {
   // Populate sidebar tab fields
   $('#num-predict-range').val(state.numPredict);
   $('#num-predict-val').text(state.numPredict);
-  $('#num-predict-reset').toggleClass('d-none', state.numPredict === 150);
+  $('#num-predict-reset').toggleClass('d-none', state.numPredict === 200);
   $('#scenario-prompt-edit').val(state.scenarioPrompt);
   $('#plot-prompt-edit').val(state.systemPrompt);
   $('#custom-prompt-edit').val(state.customPrompt);
@@ -224,7 +224,8 @@ async function generateContinuation(actionText, actionType) {
       },
     );
 
-    const finalText = (response || '(No response generated)') + '\n\n';
+    const trimmed   = response ? trimToLastSentence(response) : '';
+    const finalText = (trimmed || '(No response generated)') + '\n\n';
     streamSpan.remove();
     // Backfill turnId onto the player segment now that we know it
     if (doneTurnId !== null && playerSegIdx !== null) {
@@ -236,7 +237,7 @@ async function generateContinuation(actionText, actionType) {
     if (!isContinue) {
       state.messages.push({ role: 'user', content: playerLine });
     }
-    state.messages.push({ role: 'assistant', content: response });
+    state.messages.push({ role: 'assistant', content: trimmed || response });
     const maxMsg = state.config.contextMaxMessages || 20;
     if (state.messages.length > maxMsg) {
       if (!state.summarizing) {
@@ -265,6 +266,16 @@ async function generateContinuation(actionText, actionType) {
     $('#send-btn, #retry-btn, #undo-btn, #continue-btn').prop('disabled', false);
     $('#action-input').trigger('focus');
   }
+}
+
+// ── Sentence trimmer ──────────────────────────────────────────────────────────
+function trimToLastSentence(text) {
+  const t = text.trimEnd();
+  // Greedily match up to the last sentence-ending punctuation + optional closing quotes
+  const m = t.match(/^[\s\S]*[.!?…]["'''")\]»]*/);
+  // Only apply if result keeps at least 20% of the text (avoid over-trimming)
+  if (m && m[0].length >= t.length * 0.2) return m[0];
+  return t;
 }
 
 // ── Message builder (shared by generateContinuation & debug preview) ──────────
@@ -747,11 +758,11 @@ function bindEvents() {
     putGame(state.gameId, { num_predict: v }).catch(() => {});
   });
   $('#num-predict-reset').on('click', () => {
-    state.numPredict = 150;
-    $('#num-predict-range').val(150);
-    $('#num-predict-val').text(150);
+    state.numPredict = 200;
+    $('#num-predict-range').val(200);
+    $('#num-predict-val').text(200);
     $('#num-predict-reset').addClass('d-none');
-    putGame(state.gameId, { num_predict: 150 }).catch(() => {});
+    putGame(state.gameId, { num_predict: 200 }).catch(() => {});
   });
 
   // Scenario tab: scenario-specific DM prompt + display metadata
