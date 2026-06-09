@@ -17,7 +17,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-DATABASE_PATH = os.environ.get("DATABASE_PATH", "/app/data/dungeon.db")
+DATABASE_PATH = os.environ.get("DATABASE_PATH", "/app/data/story.db")
 OLLAMA_HOST   = os.environ.get("OLLAMA_HOST",   "http://host.docker.internal:11434")
 STATIC_DIR    = os.environ.get("STATIC_DIR",    "/app")
 

@@ -6,14 +6,14 @@ services:
     image: python:3.11-slim
     volumes:
       - .:/app
-      - db-data:/app/data
+      - ./data:/app/data
     working_dir: /app/backend
     command: >
       sh -c "pip install -q fastapi uvicorn httpx && sh /app/backend/start.sh"
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_PATH=/app/data/dungeon.db
+      - DATABASE_PATH=/app/data/story.db
       - OLLAMA_HOST=http://172.24.0.1:11434
     restart: unless-stopped
 
@@ -39,5 +39,3 @@ services:
     working_dir: /downloads
     command: python download.py --libs-only
 
-volumes:
-  db-data:
