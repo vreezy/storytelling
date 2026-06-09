@@ -366,9 +366,13 @@ function attachSegmentEdit($span, idx) {
         // Persist to DB
         const seg = state.segments[idx];
         if (seg.turnId === 'game') {
-          putGame(state.gameId, { opening_text: newText.trimEnd() }).catch(() => {});
+          putGame(state.gameId, { opening_text: newText.trimEnd() })
+            .then(() => showToast('Saved.', 'success'))
+            .catch(() => showToast('Failed to save.', 'danger'));
         } else if (seg.turnId) {
-          putTurn(state.gameId, seg.turnId, { [seg.field]: newText.trimEnd() }).catch(() => {});
+          putTurn(state.gameId, seg.turnId, { [seg.field]: newText.trimEnd() })
+            .then(() => showToast('Saved.', 'success'))
+            .catch(() => showToast('Failed to save.', 'danger'));
         }
       }
       $ta.replaceWith($span);
@@ -391,7 +395,8 @@ function attachSegmentEdit($span, idx) {
       }
     });
 
-    $span.replaceWith($ta);
+    // Use detach() not replaceWith() so $span keeps its click handler for future edits.
+    $span.after($ta).detach();
     $ta.css('width', $('#story-text').width() + 'px');
     $ta[0].style.height = $ta[0].scrollHeight + 'px';
     $ta.focus();
@@ -610,8 +615,13 @@ function buildCardEl(card) {
       triggers:    $el.find('.card-triggers-input').val().trim(),
       active:      $el.find('.card-active-toggle').is(':checked') ? 1 : 0,
     };
-    await putCard(state.gameId, card.id, updated).catch(() => {});
-    if (idx >= 0) state.cards[idx] = updated;
+    try {
+      await putCard(state.gameId, card.id, updated);
+      if (idx >= 0) state.cards[idx] = updated;
+      showToast('Card saved.', 'success');
+    } catch {
+      showToast('Failed to save card.', 'danger');
+    }
   }
 
   $el.find('.card-active-toggle, .card-type-sel').on('change', saveCard);
