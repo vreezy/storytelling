@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS games (
     custom_prompt  TEXT,                        -- custom prompt extension (writing style, etc.)
     story_summary  TEXT,                        -- rolling narrative summary of pruned turns
     summarize_enabled INTEGER NOT NULL DEFAULT 1,  -- 1 = auto-summarize pruned turns, 0 = off
+    player_intent  TEXT,                        -- generated narrator instruction from player-input analysis
+    player_intent_enabled INTEGER NOT NULL DEFAULT 1,  -- 1 = auto-analyze player intent, 0 = off
     num_predict    INTEGER  NOT NULL DEFAULT 150,  -- per-game output token limit
     created_at     DATETIME DEFAULT (datetime('now')),
     last_played_at DATETIME DEFAULT (datetime('now'))

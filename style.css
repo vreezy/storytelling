@@ -169,14 +169,32 @@
 }
 @keyframes blink { 50% { opacity: 0; } }
 
-/* Summarization toggle (Model tab) — oversized switch */
-.summarize-switch {
-  padding-left: 4rem;
+/* Feature toggle cards (Model tab) — text left, oversized switch right */
+.toggle-card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
 }
-.summarize-switch .form-check-input {
+.toggle-card-text {
+  flex-grow: 1;
+  cursor: pointer;
+  margin-bottom: 0;
+}
+.toggle-card-switch {
+  flex-shrink: 0;
+  margin-left: auto;
+  padding-left: 0;
+  min-height: 0;
+}
+.toggle-card-switch .form-check-input {
   width: 3.25rem;
   height: 1.75rem;
-  margin-left: -4rem;
+  margin-left: 0;
   margin-top: 0;
+  float: none;
   cursor: pointer;
 }

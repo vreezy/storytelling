@@ -17,6 +17,10 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from migrations import get_db, init_db
+from modules.describe import generate_description, get_describe_prompt
+from modules.player_intent import (
+    fetch_user_inputs, generate_player_intent, get_intent_prompt, save_player_intent,
+)
 from modules.summarize import generate_summary, save_summary
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://host.docker.internal:11434")
@@ -139,8 +143,9 @@ async def create_game(request: Request):
     body = await request.json()
     conn = get_db()
     cur = conn.execute(
-        """INSERT INTO games (title, description, scenario_id, model_id, system_prompt, custom_prompt, summarize_enabled)
-           VALUES (?,?,?,?,?,?,?)""",
+        """INSERT INTO games (title, description, scenario_id, model_id, system_prompt, custom_prompt,
+                              summarize_enabled, player_intent_enabled)
+           VALUES (?,?,?,?,?,?,?,?)""",
         (
             body.get("title", "Untitled Adventure"),
             body.get("description"),
@@ -149,6 +154,7 @@ async def create_game(request: Request):
             body.get("system_prompt"),
             body.get("custom_prompt"),
             1 if body.get("summarize_enabled", 1) else 0,
+            1 if body.get("player_intent_enabled", 1) else 0,
         ),
     )
     conn.commit()
@@ -189,7 +195,8 @@ async def get_game(game_id: int):
 async def update_game(game_id: int, request: Request):
     body = await request.json()
 
-    game_fields     = ["title", "description", "num_predict", "system_prompt", "custom_prompt", "story_summary", "summarize_enabled"]
+    game_fields     = ["title", "description", "num_predict", "system_prompt", "custom_prompt",
+                       "story_summary", "summarize_enabled", "player_intent_enabled"]
     scenario_fields = ["scenario_name", "scenario_icon", "scenario_description", "scenario_prompt", "opening_text"]
 
     game_updates     = {k: body[k] for k in game_fields     if k in body}
@@ -348,6 +355,49 @@ async def summarize_game(game_id: int, request: Request):
     )
     save_summary(game_id, summary)
     return {"summary": summary}
+
+
+# ── Player intent (business logic in modules/player_intent.py) ───────────────
+
+@app.post("/api/games/{game_id}/player-intent")
+async def analyze_player_intent(game_id: int):
+    conn = get_db()
+    game = conn.execute("SELECT * FROM games WHERE id=?", (game_id,)).fetchone()
+    conn.close()
+    if not game:
+        raise HTTPException(404, "Game not found")
+
+    user_inputs = fetch_user_inputs(game_id)
+    if not user_inputs:
+        return {"player_intent": ""}
+
+    intent = await generate_player_intent(
+        dict(game)["model_id"], user_inputs, get_intent_prompt()
+    )
+    save_player_intent(game_id, intent)
+    return {"player_intent": intent}
+
+
+# ── Scene description (business logic in modules/describe.py) ────────────────
+
+@app.post("/api/games/{game_id}/describe")
+async def describe_scene(game_id: int, request: Request):
+    body = await request.json()
+    messages  = body.get("messages", [])
+    character = body.get("character", "")
+
+    conn = get_db()
+    game = conn.execute("SELECT * FROM games WHERE id=?", (game_id,)).fetchone()
+    conn.close()
+    if not game:
+        raise HTTPException(404, "Game not found")
+    if not messages:
+        raise HTTPException(400, "messages required")
+
+    description = await generate_description(
+        dict(game)["model_id"], messages, character, get_describe_prompt()
+    )
+    return {"description": description}
 
 
 # ── Turns ─────────────────────────────────────────────────────────────────────

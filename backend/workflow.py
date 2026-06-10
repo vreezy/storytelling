@@ -17,6 +17,7 @@ import json
 import os
 
 from migrations import get_db
+from modules.player_intent import DEFAULT_PROMPT, generate_player_intent, save_player_intent
 from modules.summarize import generate_summary, save_summary
 
 STATIC_DIR = os.environ.get("STATIC_DIR", "/app")
@@ -67,10 +68,34 @@ async def run_summarize(game: dict, turns: list, config: dict):
     print(f"  summarize: saved ({len(overflow)} messages condensed)")
 
 
+# ── Workflow module: player intent ────────────────────────────────────────────
+
+async def run_player_intent(game: dict, turns: list, config: dict):
+    """Regenerate games.player_intent from all player inputs.
+
+    Analyzes everything the player has typed in this game and saves the
+    resulting narrator instruction. Re-running replaces the previous result.
+    """
+    if not game.get("model_id"):
+        print("  player_intent: skipped (no model_id)")
+        return
+
+    user_inputs = [t["raw_input"] for t in turns if t["raw_input"]]
+    if not user_inputs:
+        print("  player_intent: skipped (no player inputs)")
+        return
+
+    intent_prompt = config.get("playerIntentPrompt") or DEFAULT_PROMPT
+    intent = await generate_player_intent(game["model_id"], user_inputs, intent_prompt)
+    save_player_intent(game["id"], intent)
+    print(f"  player_intent: saved ({len(user_inputs)} inputs analyzed)")
+
+
 # ── Registry — append future workflow modules here ────────────────────────────
 
 MODULES = [
     ("summarize", run_summarize),
+    ("player_intent", run_player_intent),
 ]
 
 

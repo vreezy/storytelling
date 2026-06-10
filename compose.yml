@@ -7,9 +7,12 @@ services:
     volumes:
       - .:/app
       - ./data:/app/data
+      - pipcache:/root/.cache/pip
     working_dir: /app/backend
+    # Skip pip when packages are already installed (restart works offline);
+    # otherwise install with long timeouts — PyPI via the Podman VM is flaky.
     command: >
-      sh -c "pip install -q fastapi uvicorn httpx && sh /app/backend/start.sh"
+      sh -c "(python -c 'import fastapi, uvicorn, httpx' 2>/dev/null || pip install -q --retries 10 --timeout 60 fastapi uvicorn httpx) && sh /app/backend/start.sh"
     ports:
       - "8000:8000"
     environment:
@@ -25,8 +28,10 @@ services:
     volumes:
       - .:/app
       - ./data:/app/data
+      - pipcache:/root/.cache/pip
     working_dir: /app/backend
-    command: sh -c "pip install -q httpx && python workflow.py"
+    command: >
+      sh -c "(python -c 'import httpx' 2>/dev/null || pip install -q --retries 10 --timeout 60 httpx) && python workflow.py"
     environment:
       - DATABASE_PATH=/app/data/story.db
       - OLLAMA_HOST=http://172.24.0.1:11434
@@ -37,8 +42,10 @@ services:
     image: python:3.11-slim
     volumes:
       - .:/app
+      - pipcache:/root/.cache/pip
     working_dir: /app
-    command: sh -c "pip install -q requests && python tests/test_playthrough.py"
+    command: >
+      sh -c "(python -c 'import requests' 2>/dev/null || pip install -q --retries 10 --timeout 60 requests) && python tests/test_playthrough.py"
     stdin_open: true
     tty: true
     depends_on:
@@ -52,4 +59,8 @@ services:
       - .:/downloads
     working_dir: /downloads
     command: python download.py --libs-only
+
+# Shared pip download cache — survives container re-creation
+volumes:
+  pipcache:
 

@@ -34,6 +34,12 @@ flowchart TD
     %% Summarize (business logic in modules/summarize.py)
     E -->|POST /api/games/:id/summarize| J1[Fetch game or 404\ncall modules/summarize.generate_summary\nOllama /api/chat non-stream\nsave_summary updates games.story_summary\nReturn summary]
 
+    %% Player intent (business logic in modules/player_intent.py)
+    E -->|POST /api/games/:id/player-intent| J2[Fetch game or 404\nfetch_user_inputs from turns table\nempty -> return empty intent\ngenerate_player_intent via Ollama\nsave_player_intent updates games.player_intent\nReturn player_intent]
+
+    %% Scene description (business logic in modules/describe.py)
+    E -->|POST /api/games/:id/describe| J3[Fetch game or 404\nmessages required or 400\ngenerate_description via Ollama\nReturn description - nothing stored]
+
     %% Turns — generate
     E -->|POST /api/games/:id/turns| K[generate_turn]
     K --> K1[SELECT MAX turn_index + 1]

@@ -88,6 +88,10 @@
             <button id="undo-btn" class="btn btn-sm btn-outline-secondary" disabled>↩ Undo</button>
             <button id="retry-btn" class="btn btn-sm btn-outline-warning" disabled>↺ Retry</button>
             <button id="continue-btn" class="btn btn-sm btn-outline-info" disabled>▶ Continue</button>
+            <button id="describe-btn" class="btn btn-sm btn-outline-success" disabled
+                    title="Generate a detailed visual description of the current scene for a text-to-image model">
+              🖼 Describe
+            </button>
           </div>
         </div>
       </div>
@@ -154,9 +158,8 @@
           </button>
           <hr class="border-secondary opacity-25 my-3">
           <!-- Summarization toggle -->
-          <div class="form-check form-switch summarize-switch">
-            <input class="form-check-input" type="checkbox" role="switch" id="summarize-toggle" checked>
-            <label class="form-check-label" for="summarize-toggle">
+          <div class="toggle-card mb-3">
+            <label class="toggle-card-text" for="summarize-toggle">
               <span class="fw-bold d-block mb-1">Story Summarization</span>
               <span class="small text-secondary d-block">
                 When the story grows beyond the context window, older messages are condensed
@@ -167,6 +170,25 @@
                 (<code>podman compose run --rm workflow</code>).
               </span>
             </label>
+            <div class="form-check form-switch toggle-card-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="summarize-toggle" checked>
+            </div>
+          </div>
+          <!-- Player intent toggle -->
+          <div class="toggle-card">
+            <label class="toggle-card-text" for="player-intent-toggle">
+              <span class="fw-bold d-block mb-1">Player Intent Analysis</span>
+              <span class="small text-secondary d-block">
+                Every few actions, everything you have typed so far is analyzed to work out
+                what you want from the story — your goals and preferred scenes. The result is
+                injected into every prompt so the narrator plays toward it. When turned off,
+                the last analysis is kept but no longer updated. The offline workflow
+                (<code>podman compose run --rm workflow</code>) also regenerates it.
+              </span>
+            </label>
+            <div class="form-check form-switch toggle-card-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="player-intent-toggle" checked>
+            </div>
           </div>
         </div>
 
@@ -251,6 +273,29 @@
 
       </div>
 
+    </div>
+  </div>
+
+  <!-- Scene description modal -->
+  <div class="modal fade" id="describe-modal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">🖼 Scene Description</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-secondary mb-2">
+            Visual snapshot of the current scene — paste it into a text-to-image model.
+          </p>
+          <textarea id="describe-output" class="form-control form-control-sm font-monospace"
+                    rows="14" readonly></textarea>
+        </div>
+        <div class="modal-footer">
+          <button id="describe-copy-btn" class="btn btn-sm btn-outline-primary">📋 Copy</button>
+          <button type="button" class="btn btn-sm btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+        </div>
+      </div>
     </div>
   </div>
 

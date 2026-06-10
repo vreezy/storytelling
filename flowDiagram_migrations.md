@@ -73,7 +73,19 @@ flowchart TD
             ME2 --> ME3
         end
 
-        M5 --> DONE([conn.close — DB Ready])
+        M5 --> M6
+
+        subgraph M6["_migrate_add_player_intent(conn)"]
+            MF1{player_intent\nin games?}
+            MF1 -->|No| MF2[ALTER TABLE games\nADD player_intent TEXT]
+            MF1 -->|Yes| MF3
+            MF2 --> MF3{player_intent_enabled\nin games?}
+            MF3 -->|No| MF4[ALTER TABLE games\nADD player_intent_enabled INTEGER DEFAULT 1]
+            MF3 -->|Yes| MF5([Done])
+            MF4 --> MF5
+        end
+
+        M6 --> DONE([conn.close — DB Ready])
     end
 
     ENV --> GET_DB

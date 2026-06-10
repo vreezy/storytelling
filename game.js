@@ -6,8 +6,8 @@ import {
 import {
   getGame, getCharacter, getCards, putCharacter, putGame,
   createCard, putCard, deleteCard,
-  streamTurn, putTurn, undoTurn, getStats, summarizeGame,
-  getGameScenario, getModels,
+  streamTurn, putTurn, undoTurn, getStats, summarizeGame, analyzePlayerIntent,
+  describeScene, getGameScenario, getModels,
 } from './api.js';
 
 // ── Active segment edit cleanup handle ────────────────────────────────────────
@@ -32,6 +32,10 @@ const state = {
   summarizeEnabled: true,
   pendingSummary: [],   // trimmed messages waiting to be summarized in a batch
   storySummary:   '',
+  playerIntent:   '',
+  playerIntentEnabled: true,
+  analyzingIntent: false,
+  userMsgsSinceIntent: 0,
   numPredict:     200,
   sidebarOpen:    false,
 };
@@ -79,6 +83,9 @@ async function loadGame(id) {
   state.storySummary    = game.story_summary || '';
   state.summarizeEnabled = game.summarize_enabled !== 0;
   state.pendingSummary  = [];
+  state.playerIntent    = game.player_intent || '';
+  state.playerIntentEnabled = game.player_intent_enabled !== 0;
+  state.userMsgsSinceIntent = 0;
   state.numPredict      = game.num_predict ?? 200;
   state.character    = { name: '', description: '', class: '', stats: null, notes: '' };
   state.messages     = [];
@@ -136,6 +143,7 @@ async function loadGame(id) {
   $('#num-predict-val').text(state.numPredict);
   $('#num-predict-reset').toggleClass('d-none', state.numPredict === 200);
   $('#summarize-toggle').prop('checked', state.summarizeEnabled);
+  $('#player-intent-toggle').prop('checked', state.playerIntentEnabled);
   $('#scenario-prompt-edit').val(state.scenarioPrompt);
   $('#plot-prompt-edit').val(state.systemPrompt);
   $('#custom-prompt-edit').val(state.customPrompt);
@@ -145,7 +153,7 @@ async function loadGame(id) {
   if (savedW) $('#char-sheet').css('width', parseInt(savedW) + 'px');
 
   $('#debug-panel').removeClass('d-none');
-  $('#send-btn, #action-input, #continue-btn').prop('disabled', false);
+  $('#send-btn, #action-input, #continue-btn, #describe-btn').prop('disabled', false);
   $('#action-input').trigger('focus');
   history.replaceState(null, '', `?id=${id}`);
   const el = document.getElementById('story-text');
@@ -173,7 +181,7 @@ async function continueStory() {
 // ── Generate continuation ─────────────────────────────────────────────────────
 async function generateContinuation(actionText, actionType) {
   state.generating = true;
-  $('#send-btn, #undo-btn, #retry-btn, #continue-btn').prop('disabled', true);
+  $('#send-btn, #undo-btn, #retry-btn, #continue-btn, #describe-btn').prop('disabled', true);
 
   const isContinue = actionText === null;
   let playerLine   = null;
@@ -243,6 +251,8 @@ async function generateContinuation(actionText, actionType) {
 
     if (!isContinue) {
       state.messages.push({ role: 'user', content: playerLine });
+      state.userMsgsSinceIntent += 1;
+      maybeAnalyzeIntent();
     }
     state.messages.push({ role: 'assistant', content: trimmed || response });
     const maxMsg = state.config.contextMaxMessages || 20;
@@ -262,7 +272,7 @@ async function generateContinuation(actionText, actionType) {
     showToast(`Generation error: ${err.message}`, 'danger');
   } finally {
     state.generating = false;
-    $('#send-btn, #retry-btn, #undo-btn, #continue-btn').prop('disabled', false);
+    $('#send-btn, #retry-btn, #undo-btn, #continue-btn, #describe-btn').prop('disabled', false);
     $('#action-input').trigger('focus');
   }
 }
@@ -292,6 +302,60 @@ function maybeSummarize() {
   });
 }
 
+// ── Scene description (for text-to-image models) ──────────────────────────────
+// Sends the recent story context to the backend, which asks the model for a
+// detailed visual snapshot (characters, clothing, poses, setting, lighting).
+// The result is shown in a modal with a copy button — it never becomes part
+// of the story, the message history, or the database.
+async function describeCurrentScene() {
+  if (state.generating || !state.gameId) return;
+  const recent = state.messages.slice(-8);
+  if (!recent.length) {
+    showToast('Nothing to describe yet — play a turn first.', 'warning');
+    return;
+  }
+
+  $('#describe-btn').prop('disabled', true);
+  $('#describe-output').val('Generating description…');
+  bootstrap.Modal.getOrCreateInstance('#describe-modal').show();
+
+  try {
+    // Character context without the name — the description must stay nameless.
+    const c = state.character || {};
+    const charVisual = [c.description, c.class ? `Class: ${c.class}` : '']
+      .filter(Boolean).join(' — ');
+    const result = await describeScene(state.gameId, {
+      messages:  recent,
+      character: charVisual ? `The protagonist: ${charVisual}` : '',
+    });
+    $('#describe-output').val(result.description || '(The model returned an empty description.)');
+  } catch (err) {
+    $('#describe-output').val(`Error: ${err.message}`);
+  } finally {
+    $('#describe-btn').prop('disabled', state.generating);
+  }
+}
+
+// ── Player intent analysis ────────────────────────────────────────────────────
+// Every config.playerIntentAfterMessages player inputs, the backend analyzes
+// all inputs of this game (from the turns table) and returns a narrator
+// instruction that is injected into the system content like the summary.
+function maybeAnalyzeIntent() {
+  const threshold = state.config.playerIntentAfterMessages || 5;
+  if (!state.playerIntentEnabled || state.analyzingIntent) return;
+  if (state.userMsgsSinceIntent < threshold) return;
+
+  state.userMsgsSinceIntent = 0;
+  state.analyzingIntent = true;
+  analyzePlayerIntent(state.gameId).then(result => {
+    state.playerIntent = result.player_intent || '';
+  }).catch(err => {
+    console.warn('[player intent] failed:', err);
+  }).finally(() => {
+    state.analyzingIntent = false;
+  });
+}
+
 // ── Sentence trimmer ──────────────────────────────────────────────────────────
 function trimToLastSentence(text) {
   const t = text.trimEnd();
@@ -318,6 +382,7 @@ function buildMessages(actionType, playerLine) {
     charCtx,
     cardsCtx,
     state.storySummary ? `Story so far: ${state.storySummary}` : '',
+    state.playerIntent,
     actionPrompt,
   ].filter(Boolean).join('\n\n');
 
@@ -507,6 +572,7 @@ function updateDebugCombined() {
     $('#debug-scenario-prompt').val(),
     state.customPrompt || '',
     $('#debug-char-context').val(),
+    state.playerIntent || '',
     ap[activeAction] || '',
   ].filter(s => s.trim());
   $('#debug-combined').val(parts.join('\n\n'));
@@ -570,6 +636,7 @@ function renderPromptDiagram() {
     { label: 'Character Context',             color: '#fbbf24', value: buildCharacterContext() },
     { label: 'World Cards',                   color: '#f97316', value: buildCardsContext(playerLine) },
     { label: 'Story Summary',                 color: '#a78bfa', value: state.storySummary ? `Story so far: ${state.storySummary}` : '' },
+    { label: 'Player Intent',                 color: '#ec4899', value: state.playerIntent || '' },
     { label: `Action Prompt (${actionType})`, color: '#f87171', value: ['do','say','story'].includes(actionType) ? ($('#debug-action-' + actionType).val() || '') : '' },
   ];
 
@@ -868,6 +935,20 @@ function bindEvents() {
     putGame(state.gameId, { num_predict: 200 }).catch(() => {});
   });
 
+  // Model tab: player intent toggle
+  $('#player-intent-toggle').on('change', function () {
+    const enabled = $(this).is(':checked');
+    state.playerIntentEnabled = enabled;
+    if (enabled) state.userMsgsSinceIntent = 0;
+    putGame(state.gameId, { player_intent_enabled: enabled ? 1 : 0 })
+      .then(() => showToast(`Player intent analysis ${enabled ? 'enabled' : 'disabled'}.`, 'success'))
+      .catch(() => {
+        showToast('Failed to save player intent setting.', 'danger');
+        state.playerIntentEnabled = !enabled;
+        $(this).prop('checked', !enabled);
+      });
+  });
+
   // Model tab: summarization toggle
   $('#summarize-toggle').on('change', function () {
     const enabled = $(this).is(':checked');
@@ -948,6 +1029,17 @@ function bindEvents() {
   $('#undo-btn').on('click', undo);
   $('#retry-btn').on('click', retry);
   $('#continue-btn').on('click', continueStory);
+  $('#describe-btn').on('click', describeCurrentScene);
+  $('#describe-copy-btn').on('click', async () => {
+    const text = $('#describe-output').val();
+    try {
+      await navigator.clipboard.writeText(text);
+      showToast('Description copied.', 'success');
+    } catch {
+      $('#describe-output').trigger('select');
+      showToast('Copy failed — text selected, press Ctrl+C.', 'warning');
+    }
+  });
   // Enter to send
   $('#action-input').on('keydown', function (e) {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendAction(); }

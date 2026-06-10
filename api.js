@@ -210,6 +210,28 @@ export async function summarizeGame(gameId, data) {
   return r.json();
 }
 
+// ── Player intent ────────────────────────────────────────────────────────────
+export async function analyzePlayerIntent(gameId) {
+  const r = await fetch(`${_base}/api/games/${gameId}/player-intent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({}),
+  });
+  if (!r.ok) throw new Error(`Player intent analysis failed: ${r.status}`);
+  return r.json();
+}
+
+// ── Scene description ────────────────────────────────────────────────────────
+export async function describeScene(gameId, data) {
+  const r = await fetch(`${_base}/api/games/${gameId}/describe`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+  });
+  if (!r.ok) throw new Error(`Describe failed: ${r.status}`);
+  return r.json();
+}
+
 // ── Stats ─────────────────────────────────────────────────────────────────────
 export async function getStats() {
   const r = await fetch(`${_base}/api/stats`);

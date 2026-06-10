@@ -42,6 +42,16 @@ def _migrate_add_summarize_enabled(conn: sqlite3.Connection):
         conn.commit()
 
 
+def _migrate_add_player_intent(conn: sqlite3.Connection):
+    cols = {r[1] for r in conn.execute("PRAGMA table_info(games)").fetchall()}
+    if "player_intent" not in cols:
+        conn.execute("ALTER TABLE games ADD COLUMN player_intent TEXT")
+        conn.commit()
+    if "player_intent_enabled" not in cols:
+        conn.execute("ALTER TABLE games ADD COLUMN player_intent_enabled INTEGER NOT NULL DEFAULT 1")
+        conn.commit()
+
+
 def _migrate_world_cards_columns(conn: sqlite3.Connection):
     card_cols = {r[1] for r in conn.execute("PRAGMA table_info(world_cards)").fetchall()}
     if "triggers" not in card_cols:
@@ -116,5 +126,6 @@ def init_db():
     _migrate_scenarios_table(conn)
     _migrate_scenario_columns_out_of_games(conn)
     _migrate_add_summarize_enabled(conn)
+    _migrate_add_player_intent(conn)
 
     conn.close()

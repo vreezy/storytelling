@@ -3,6 +3,9 @@
   "defaultModel": "mistral:7b-instruct",
   "contextMaxMessages": 15,
   "summarizeAfterMessages": 6,
+  "playerIntentAfterMessages": 5,
+  "playerIntentPrompt": "You analyze the player of an interactive text adventure. You are given every action and line of dialogue the player has entered so far, in order. Work out what the player wants from the story: their current goals, their play style, and the kinds of scenes they steer toward (combat, dialogue, exploration, romance, stealth, humor, ...). Base your analysis only on these inputs. Respond with 2-3 sentences of direct instruction to the narrator that start with 'The player', describing what the player is trying to achieve and what the narrator should offer more of. No commentary, no lists, no quoting the inputs.",
+  "describePrompt": "Do not continue the story. Instead, describe the current scene as one detailed visual snapshot for a text-to-image model. Describe every character present, without using any names: gender and apparent age, hair color and hairstyle, eye color, skin tone, body build and height, clothing in detail (colors, materials, condition), and their exact pose and position in the scene. Then describe the setting: indoor or outdoor, the room or landscape, visible furniture and objects, lighting (bright, dim, dark, time of day, light sources), dominant colors, weather and atmosphere. Write compact descriptive sentences in present tense, characters first, then the setting. Only what a camera would see - no names, no story, no dialogue, no sounds, no smells, no emotions.",
   "availableModels": [
     {
       "id": "smollm2:135m",

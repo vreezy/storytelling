@@ -79,6 +79,8 @@ The connection badge in the top-right should turn green.
    - **Say** — your character speaks
    - **Story** — narrator-style steering
 
+**🖼 Describe** (next to Continue) generates a detailed visual description of the current scene — characters (hair, eyes, clothing, pose; no names), setting, lighting — ready to paste into a text-to-image model. The prompt is configurable via `describePrompt` in `config.json`; the result is shown in a dialog with a copy button and is not added to the story.
+
 ### Continuing a saved game
 
 Click **Load Game** at any time. Games are listed newest-first. Click a row to resume.
@@ -157,6 +159,8 @@ podman compose run --rm workflow
 ```
 
 The workflow engine (`backend/workflow.py`) iterates **all games** and regenerates each story summary **from scratch**: it rebuilds the full message history from the turns, takes everything that has fallen out of the context window (`contextMaxMessages` in `config.json`), and folds it chunk by chunk (`summarizeAfterMessages` per chunk) into a fresh summary via Ollama. Re-running is always safe — the result simply replaces the previous summary.
+
+The workflow also regenerates the **player intent analysis** for every game: all player inputs are analyzed with `playerIntentPrompt` (config.json) to work out what the player wants, and the resulting narrator instruction replaces `games.player_intent` (the live equivalent runs every `playerIntentAfterMessages` inputs via the "Player Intent Analysis" switch in the Model tab).
 
 **Ollama must be running.** The backend container is not needed. Games whose story still fits the context window are skipped.
 
@@ -261,7 +265,8 @@ aidungeon/
 │   ├── migrations.py     # DB connection + idempotent schema migrations
 │   ├── workflow.py       # Offline workflow engine (podman compose run --rm workflow)
 │   ├── modules/
-│   │   └── summarize.py  # Summarization business logic (used by main.py + workflow.py)
+│   │   ├── summarize.py      # Summarization business logic (used by main.py + workflow.py)
+│   │   └── player_intent.py  # Player intent analysis (used by main.py + workflow.py)
 │   └── schema.sql        # SQLite schema
 ├── tests/
 │   ├── test_playthrough.py   # Headless 30-turn playthrough + analysis
