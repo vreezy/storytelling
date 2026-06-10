@@ -168,3 +168,15 @@
   animation: blink 1s step-end infinite;
 }
 @keyframes blink { 50% { opacity: 0; } }
+
+/* Summarization toggle (Model tab) — oversized switch */
+.summarize-switch {
+  padding-left: 4rem;
+}
+.summarize-switch .form-check-input {
+  width: 3.25rem;
+  height: 1.75rem;
+  margin-left: -4rem;
+  margin-top: 0;
+  cursor: pointer;
+}

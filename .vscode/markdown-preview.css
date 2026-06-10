@@ -1,0 +1,7 @@
+/* Remove VSCode's default height cap on Mermaid diagrams in Markdown preview */
+.mermaid svg,
+svg[id^="mermaid"] {
+  max-height: none !important;
+  height: auto !important;
+  width: 100% !important;
+}

@@ -13,6 +13,7 @@ erDiagram
         TEXT system_prompt
         TEXT custom_prompt
         TEXT story_summary
+        INTEGER summarize_enabled
         INTEGER num_predict
         DATETIME created_at
         DATETIME last_played_at
@@ -111,6 +112,7 @@ erDiagram
 | `system_prompt` | Global narrator prompt (writing style, general rules) — editable in the Plot tab |
 | `custom_prompt` | Additional writing style / narrative rules appended after system_prompt |
 | `story_summary` | Running summary of turns that have been trimmed from the context window |
+| `summarize_enabled` | 1 = auto-summarize trimmed turns into `story_summary` (default), 0 = off — editable via the switch in the Model tab |
 | `num_predict` | Per-game output token limit (25–200, default: 150) — editable in the Model tab |
 
 ### scenarios

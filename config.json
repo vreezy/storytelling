@@ -2,6 +2,7 @@
   "backendUrl": "http://localhost:8000",
   "defaultModel": "mistral:7b-instruct",
   "contextMaxMessages": 15,
+  "summarizeAfterMessages": 6,
   "availableModels": [
     {
       "id": "smollm2:135m",

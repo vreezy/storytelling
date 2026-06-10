@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS games (
     system_prompt  TEXT,                        -- global DM system prompt
     custom_prompt  TEXT,                        -- custom prompt extension (writing style, etc.)
     story_summary  TEXT,                        -- rolling narrative summary of pruned turns
+    summarize_enabled INTEGER NOT NULL DEFAULT 1,  -- 1 = auto-summarize pruned turns, 0 = off
     num_predict    INTEGER  NOT NULL DEFAULT 150,  -- per-game output token limit
     created_at     DATETIME DEFAULT (datetime('now')),
     last_played_at DATETIME DEFAULT (datetime('now'))

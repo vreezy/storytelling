@@ -29,6 +29,8 @@ const state = {
   lastAction:     null,
   generating:     false,
   summarizing:    false,
+  summarizeEnabled: true,
+  pendingSummary: [],   // trimmed messages waiting to be summarized in a batch
   storySummary:   '',
   numPredict:     200,
   sidebarOpen:    false,
@@ -75,6 +77,8 @@ async function loadGame(id) {
   state.scenarioPrompt  = game.scenario_prompt || '';
   state.customPrompt    = game.custom_prompt || '';
   state.storySummary    = game.story_summary || '';
+  state.summarizeEnabled = game.summarize_enabled !== 0;
+  state.pendingSummary  = [];
   state.numPredict      = game.num_predict ?? 200;
   state.character    = { name: '', description: '', class: '', stats: null, notes: '' };
   state.messages     = [];
@@ -131,6 +135,7 @@ async function loadGame(id) {
   $('#num-predict-range').val(state.numPredict);
   $('#num-predict-val').text(state.numPredict);
   $('#num-predict-reset').toggleClass('d-none', state.numPredict === 200);
+  $('#summarize-toggle').prop('checked', state.summarizeEnabled);
   $('#scenario-prompt-edit').val(state.scenarioPrompt);
   $('#plot-prompt-edit').val(state.systemPrompt);
   $('#custom-prompt-edit').val(state.customPrompt);
@@ -242,21 +247,12 @@ async function generateContinuation(actionText, actionType) {
     state.messages.push({ role: 'assistant', content: trimmed || response });
     const maxMsg = state.config.contextMaxMessages || 20;
     if (state.messages.length > maxMsg) {
-      if (!state.summarizing) {
-        const overflow = state.messages.slice(0, state.messages.length - maxMsg);
-        state.summarizing = true;
-        summarizeGame(state.gameId, {
-          messages:         overflow,
-          existing_summary: state.storySummary,
-        }).then(result => {
-          state.storySummary = result.summary;
-        }).catch(err => {
-          console.warn('[summary] failed:', err);
-        }).finally(() => {
-          state.summarizing = false;
-        });
-      }
+      const overflow = state.messages.slice(0, state.messages.length - maxMsg);
       state.messages = state.messages.slice(-maxMsg);
+      if (state.summarizeEnabled) {
+        state.pendingSummary.push(...overflow);
+        maybeSummarize();
+      }
     }
     updateContextBar();
     if (!$('#tab-debug').hasClass('d-none')) refreshDebugTab();
@@ -269,6 +265,31 @@ async function generateContinuation(actionText, actionType) {
     $('#send-btn, #retry-btn, #undo-btn, #continue-btn').prop('disabled', false);
     $('#action-input').trigger('focus');
   }
+}
+
+// ── Summarization batching ────────────────────────────────────────────────────
+// Trimmed messages collect in state.pendingSummary; once at least
+// config.summarizeAfterMessages have accumulated, one summarize call
+// condenses the whole batch into the rolling story summary.
+function maybeSummarize() {
+  const threshold = state.config.summarizeAfterMessages || 6;
+  if (state.summarizing || state.pendingSummary.length < threshold) return;
+
+  const batch = state.pendingSummary;
+  state.pendingSummary = [];
+  state.summarizing = true;
+  summarizeGame(state.gameId, {
+    messages:         batch,
+    existing_summary: state.storySummary,
+  }).then(result => {
+    state.storySummary = result.summary;
+  }).catch(err => {
+    console.warn('[summary] failed:', err);
+    // Re-queue the batch so the next turn retries it
+    state.pendingSummary = [...batch, ...state.pendingSummary];
+  }).finally(() => {
+    state.summarizing = false;
+  });
 }
 
 // ── Sentence trimmer ──────────────────────────────────────────────────────────
@@ -845,6 +866,20 @@ function bindEvents() {
     $('#num-predict-val').text(200);
     $('#num-predict-reset').addClass('d-none');
     putGame(state.gameId, { num_predict: 200 }).catch(() => {});
+  });
+
+  // Model tab: summarization toggle
+  $('#summarize-toggle').on('change', function () {
+    const enabled = $(this).is(':checked');
+    state.summarizeEnabled = enabled;
+    if (!enabled) state.pendingSummary = [];
+    putGame(state.gameId, { summarize_enabled: enabled ? 1 : 0 })
+      .then(() => showToast(`Summarization ${enabled ? 'enabled' : 'disabled'}.`, 'success'))
+      .catch(() => {
+        showToast('Failed to save summarization setting.', 'danger');
+        state.summarizeEnabled = !enabled;
+        $(this).prop('checked', !enabled);
+      });
   });
 
   // Scenario tab: scenario-specific DM prompt + display metadata

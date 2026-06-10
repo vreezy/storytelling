@@ -17,6 +17,20 @@ services:
       - OLLAMA_HOST=http://172.24.0.1:11434
     restart: unless-stopped
 
+  # One-shot: offline workflow — regenerates story summaries for all games
+  # For low-power systems: turn off live summarization in the game, then
+  # run this after the session. Run with: podman compose run --rm workflow
+  workflow:
+    image: python:3.11-slim
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    working_dir: /app/backend
+    command: sh -c "pip install -q httpx && python workflow.py"
+    environment:
+      - DATABASE_PATH=/app/data/story.db
+      - OLLAMA_HOST=http://172.24.0.1:11434
+
   # One-shot: plays 30 turns and writes an analysis report to tests/reports/
   # Run with: podman compose run --rm tester
   tester:

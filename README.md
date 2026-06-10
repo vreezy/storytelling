@@ -148,6 +148,22 @@ To add a run for a new scenario, copy an existing config and edit the `scenario_
 
 ---
 
+## Summarize Workflow (offline)
+
+The game can condense old story messages into a rolling "Story so far" summary live during play (switch in the **Model** tab of the game sidebar). On low-power systems this extra generation per turn is unwelcome — turn the switch **off**, play your session, then run the offline workflow and leave the computer:
+
+```powershell
+podman compose run --rm workflow
+```
+
+The workflow engine (`backend/workflow.py`) iterates **all games** and regenerates each story summary **from scratch**: it rebuilds the full message history from the turns, takes everything that has fallen out of the context window (`contextMaxMessages` in `config.json`), and folds it chunk by chunk (`summarizeAfterMessages` per chunk) into a fresh summary via Ollama. Re-running is always safe — the result simply replaces the previous summary.
+
+**Ollama must be running.** The backend container is not needed. Games whose story still fits the context window are skipped.
+
+The engine is built for more batch jobs later: business logic lives in `backend/modules/<name>.py`, and each job is registered in the `MODULES` list in `workflow.py`.
+
+---
+
 ## Scenarios
 
 Scenarios live in `scenarios/`. Each file is a self-contained JSON document. The load order is controlled by `scenarios/index.json`.
@@ -241,7 +257,11 @@ aidungeon/
 │   └── custom.json
 ├── compose.yml           # Podman Compose
 ├── backend/
-│   ├── main.py           # FastAPI application
+│   ├── main.py           # FastAPI application (all routes)
+│   ├── migrations.py     # DB connection + idempotent schema migrations
+│   ├── workflow.py       # Offline workflow engine (podman compose run --rm workflow)
+│   ├── modules/
+│   │   └── summarize.py  # Summarization business logic (used by main.py + workflow.py)
 │   └── schema.sql        # SQLite schema
 ├── tests/
 │   ├── test_playthrough.py   # Headless 30-turn playthrough + analysis

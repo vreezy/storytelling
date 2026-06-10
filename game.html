@@ -152,6 +152,22 @@
           <button id="num-predict-reset" class="btn btn-sm btn-outline-secondary mt-3 d-none">
             Reset to 150
           </button>
+          <hr class="border-secondary opacity-25 my-3">
+          <!-- Summarization toggle -->
+          <div class="form-check form-switch summarize-switch">
+            <input class="form-check-input" type="checkbox" role="switch" id="summarize-toggle" checked>
+            <label class="form-check-label" for="summarize-toggle">
+              <span class="fw-bold d-block mb-1">Story Summarization</span>
+              <span class="small text-secondary d-block">
+                When the story grows beyond the context window, older messages are condensed
+                into a rolling "Story so far" summary that is injected into every prompt so the
+                model remembers past events. When turned off, old messages are dropped without
+                being summarized. On low-power systems, turn this off and run the offline
+                workflow after your session instead
+                (<code>podman compose run --rm workflow</code>).
+              </span>
+            </label>
+          </div>
         </div>
 
         <!-- Scenario tab -->

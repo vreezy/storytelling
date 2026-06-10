@@ -7,7 +7,6 @@ Ollama is expected at OLLAMA_HOST (default: http://host.docker.internal:11434)
 import json
 import os
 import re
-import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -17,92 +16,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-DATABASE_PATH = os.environ.get("DATABASE_PATH", "/app/data/story.db")
-OLLAMA_HOST   = os.environ.get("OLLAMA_HOST",   "http://host.docker.internal:11434")
-STATIC_DIR    = os.environ.get("STATIC_DIR",    "/app")
+from migrations import get_db, init_db
+from modules.summarize import generate_summary, save_summary
 
-
-# ── Database ──────────────────────────────────────────────────────────────────
-
-def get_db() -> sqlite3.Connection:
-    conn = sqlite3.connect(DATABASE_PATH)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA foreign_keys=ON")
-    return conn
-
-
-def init_db():
-    os.makedirs(os.path.dirname(DATABASE_PATH), exist_ok=True)
-    schema_path = os.path.join(os.path.dirname(__file__), "schema.sql")
-    with open(schema_path) as f:
-        schema = f.read()
-    conn = get_db()
-    conn.executescript(schema)
-
-    # ── Column-level migrations for existing databases ────────────────────────
-    cols = {r[1] for r in conn.execute("PRAGMA table_info(games)").fetchall()}
-    if "num_predict" not in cols:
-        conn.execute("ALTER TABLE games ADD COLUMN num_predict INTEGER NOT NULL DEFAULT 150")
-        conn.commit()
-    if "custom_prompt" not in cols:
-        conn.execute("ALTER TABLE games ADD COLUMN custom_prompt TEXT")
-        conn.commit()
-    if "story_summary" not in cols:
-        conn.execute("ALTER TABLE games ADD COLUMN story_summary TEXT")
-        conn.commit()
-
-    card_cols = {r[1] for r in conn.execute("PRAGMA table_info(world_cards)").fetchall()}
-    if "triggers" not in card_cols:
-        conn.execute("ALTER TABLE world_cards ADD COLUMN triggers TEXT")
-        conn.commit()
-
-    # ── scenarios table (new installs get it from schema.sql) ─────────────────
-    conn.execute("""
-        CREATE TABLE IF NOT EXISTS scenarios (
-            game_id         INTEGER PRIMARY KEY REFERENCES games(id) ON DELETE CASCADE,
-            name            TEXT NOT NULL DEFAULT '',
-            icon            TEXT NOT NULL DEFAULT '📖',
-            description     TEXT NOT NULL DEFAULT '',
-            scenario_prompt TEXT,
-            opening_text    TEXT
-        )
-    """)
-    conn.commit()
-
-    # ── Migrate scenario_prompt / opening_text out of games (old DBs) ─────────
-    if "scenario_prompt" in cols:
-        conn.execute("""
-            INSERT OR IGNORE INTO scenarios (game_id, scenario_prompt, opening_text)
-            SELECT id, scenario_prompt, opening_text FROM games
-        """)
-        conn.commit()
-        conn.executescript("""
-            BEGIN;
-            CREATE TABLE games_new (
-                id             INTEGER PRIMARY KEY AUTOINCREMENT,
-                title          TEXT    NOT NULL DEFAULT 'Untitled Adventure',
-                description    TEXT,
-                scenario_id    TEXT,
-                model_id       TEXT,
-                system_prompt  TEXT,
-                custom_prompt  TEXT,
-                story_summary  TEXT,
-                num_predict    INTEGER NOT NULL DEFAULT 150,
-                created_at     DATETIME DEFAULT (datetime('now')),
-                last_played_at DATETIME DEFAULT (datetime('now'))
-            );
-            INSERT INTO games_new
-                SELECT id, title, description, scenario_id, model_id, system_prompt,
-                       custom_prompt, story_summary, num_predict, created_at, last_played_at
-                FROM games;
-            DROP TABLE games;
-            ALTER TABLE games_new RENAME TO games;
-            CREATE INDEX IF NOT EXISTS idx_games_played ON games(last_played_at DESC);
-            COMMIT;
-        """)
-
-    conn.close()
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://host.docker.internal:11434")
+STATIC_DIR  = os.environ.get("STATIC_DIR",  "/app")
 
 
 # ── App lifecycle ─────────────────────────────────────────────────────────────
@@ -221,8 +139,8 @@ async def create_game(request: Request):
     body = await request.json()
     conn = get_db()
     cur = conn.execute(
-        """INSERT INTO games (title, description, scenario_id, model_id, system_prompt, custom_prompt)
-           VALUES (?,?,?,?,?,?)""",
+        """INSERT INTO games (title, description, scenario_id, model_id, system_prompt, custom_prompt, summarize_enabled)
+           VALUES (?,?,?,?,?,?,?)""",
         (
             body.get("title", "Untitled Adventure"),
             body.get("description"),
@@ -230,6 +148,7 @@ async def create_game(request: Request):
             body.get("model_id"),
             body.get("system_prompt"),
             body.get("custom_prompt"),
+            1 if body.get("summarize_enabled", 1) else 0,
         ),
     )
     conn.commit()
@@ -270,7 +189,7 @@ async def get_game(game_id: int):
 async def update_game(game_id: int, request: Request):
     body = await request.json()
 
-    game_fields     = ["title", "description", "num_predict", "system_prompt", "custom_prompt", "story_summary"]
+    game_fields     = ["title", "description", "num_predict", "system_prompt", "custom_prompt", "story_summary", "summarize_enabled"]
     scenario_fields = ["scenario_name", "scenario_icon", "scenario_description", "scenario_prompt", "opening_text"]
 
     game_updates     = {k: body[k] for k in game_fields     if k in body}
@@ -410,7 +329,7 @@ async def import_scenario(request: Request):
     return body
 
 
-# ── Summarize ─────────────────────────────────────────────────────────────────
+# ── Summarize (business logic in modules/summarize.py) ───────────────────────
 
 @app.post("/api/games/{game_id}/summarize")
 async def summarize_game(game_id: int, request: Request):
@@ -424,38 +343,10 @@ async def summarize_game(game_id: int, request: Request):
     if not game:
         raise HTTPException(404, "Game not found")
 
-    turns_text = "\n".join(
-        f"{'Player' if m['role'] == 'user' else 'Story'}: {m['content']}"
-        for m in messages_to_summarize
+    summary = await generate_summary(
+        dict(game)["model_id"], messages_to_summarize, existing_summary
     )
-    if existing_summary:
-        turns_text = f"Previous summary: {existing_summary}\n\nNew events:\n{turns_text}"
-
-    ollama_req = {
-        "model": dict(game)["model_id"],
-        "messages": [
-            {
-                "role": "system",
-                "content": (
-                    "Summarize these story events in 2–3 sentences, past tense. "
-                    "Be specific: names, locations, key actions. No commentary."
-                ),
-            },
-            {"role": "user", "content": turns_text},
-        ],
-        "stream": False,
-        "options": {"temperature": 0.3, "num_predict": 120},
-    }
-
-    async with httpx.AsyncClient(timeout=None) as client:
-        r = await client.post(f"{OLLAMA_HOST}/api/chat", json=ollama_req)
-        data = r.json()
-    summary = data.get("message", {}).get("content", "").strip()
-
-    conn = get_db()
-    conn.execute("UPDATE games SET story_summary=? WHERE id=?", (summary, game_id))
-    conn.commit()
-    conn.close()
+    save_summary(game_id, summary)
     return {"summary": summary}
 
 
