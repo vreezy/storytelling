@@ -81,6 +81,7 @@ class DungeonConfig:
         self.context_max_messages = data.get("contextMaxMessages", 15)
         self.action_prompts       = data.get("actionPrompts", {})
         self.generation           = data.get("generation", {})
+        self.player_intent_after  = data.get("playerIntentAfterMessages", 5)
 
         # Load scenario from scenarios/<id>.json (project root / scenarios/)
         scenarios_dir = config_path.parent / "scenarios"
@@ -140,6 +141,7 @@ class MessageBuilder:
         self.dc = dc
         self.messages = []
         self.story_summary = ""
+        self.player_intent = ""
 
     @staticmethod
     def build_player_action_text(text, action_type):
@@ -192,6 +194,7 @@ class MessageBuilder:
             char_ctx,
             cards_ctx,
             f"Story so far: {self.story_summary}" if self.story_summary else "",
+            self.player_intent,
             action_prompt,
         ]
         sys_content = "\n\n".join(p for p in sys_parts if p)
@@ -241,6 +244,27 @@ class GameClient:
 
     def get_game(self, game_id):
         r = requests.get(f"{self.base_url}/api/games/{game_id}", timeout=None)
+        r.raise_for_status()
+        return r.json()
+
+    def put_character(self, game_id, payload):
+        r = requests.put(
+            f"{self.base_url}/api/games/{game_id}/character", json=payload, timeout=None
+        )
+        r.raise_for_status()
+        return r.json()
+
+    def create_card(self, game_id, payload):
+        r = requests.post(
+            f"{self.base_url}/api/games/{game_id}/cards", json=payload, timeout=None
+        )
+        r.raise_for_status()
+        return r.json()
+
+    def analyze_player_intent(self, game_id):
+        r = requests.post(
+            f"{self.base_url}/api/games/{game_id}/player-intent", timeout=None
+        )
         r.raise_for_status()
         return r.json()
 
@@ -341,12 +365,44 @@ class PlaythroughRunner:
         self.game_id = game["id"]
         print(f"  Game created: id={self.game_id}  \"{game_title}\"")
 
+        # Persist character + world cards like setup.js does after game creation
+        chars = self.dc.scenario.get("mainCharacters", [])
+        if chars:
+            mc = chars[0]
+            try:
+                self.client.put_character(self.game_id, {
+                    "name": mc.get("name", ""),
+                    "description": mc.get("description", ""),
+                    "class": mc.get("class", ""),
+                    "notes": mc.get("notes", ""),
+                })
+                print(f"  Character saved: {mc.get('name', '?')}")
+            except Exception as e:
+                print(f"  WARNING: character save failed: {e}")
+
+        cards = self.dc.scenario.get("cards", [])
+        for i, c in enumerate(cards):
+            try:
+                self.client.create_card(self.game_id, {
+                    "type": c.get("type", "lore"),
+                    "name": c.get("name", ""),
+                    "description": c.get("description", ""),
+                    "triggers": c.get("triggers", ""),
+                    "active": 1,
+                    "sort_order": i,
+                })
+            except Exception as e:
+                print(f"  WARNING: card \"{c.get('name', '?')}\" save failed: {e}")
+        if cards:
+            print(f"  {len(cards)} world card(s) saved")
+
         # Seed opening text as first assistant message (mirrors loadGame() in game.js)
         self.mb.record_assistant_response(opening_text, self.context_max)
 
         actions = self.config["actions"]
         gen = self.config["generation"]
         records = []
+        user_msgs_since_intent = 0
 
         print(f"\n{'='*60}")
         print(f"  {len(actions)} turns | model: {self.config['model_id']}")
@@ -399,6 +455,18 @@ class PlaythroughRunner:
                         print(f"  [context summarized: {len(overflow)} messages condensed]")
                     except Exception as e:
                         print(f"  [summary failed: {e}]")
+
+                # Mirror maybeAnalyzeIntent() from game.js: every
+                # playerIntentAfterMessages player inputs, analyze all inputs
+                user_msgs_since_intent += 1
+                if user_msgs_since_intent >= self.dc.player_intent_after:
+                    user_msgs_since_intent = 0
+                    try:
+                        ir = self.client.analyze_player_intent(self.game_id)
+                        self.mb.player_intent = ir.get("player_intent", "")
+                        print(f"  [player intent analyzed: {len(self.mb.player_intent)} chars]")
+                    except Exception as e:
+                        print(f"  [player intent failed: {e}]")
 
                 records.append(TurnRecord(i + 1, action_type, raw_input, player_line, result=result))
 

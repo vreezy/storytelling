@@ -1,6 +1,6 @@
 {
   "scenario_id": "overlord",
-  "model_id": "mistral:7b-instruct",
+  "model_id": "dolphin3:8b",
   "game_title": "Playthrough Test — Overlord",
   "base_url": "http://backend:8000",
   "dungeon_config_path": "config.json",

@@ -5,7 +5,15 @@
   "summarizeAfterMessages": 6,
   "playerIntentAfterMessages": 5,
   "playerIntentPrompt": "You analyze the player of an interactive text adventure. You are given every action and line of dialogue the player has entered so far, in order. Work out what the player wants from the story: their current goals, their play style, and the kinds of scenes they steer toward (combat, dialogue, exploration, romance, stealth, humor, ...). Base your analysis only on these inputs. Respond with 2-3 sentences of direct instruction to the narrator that start with 'The player', describing what the player is trying to achieve and what the narrator should offer more of. No commentary, no lists, no quoting the inputs.",
-  "describePrompt": "Do not continue the story. Instead, describe the current scene as one detailed visual snapshot for a text-to-image model. Describe every character present, without using any names: gender and apparent age, hair color and hairstyle, eye color, skin tone, body build and height, clothing in detail (colors, materials, condition), and their exact pose and position in the scene. Then describe the setting: indoor or outdoor, the room or landscape, visible furniture and objects, lighting (bright, dim, dark, time of day, light sources), dominant colors, weather and atmosphere. Write compact descriptive sentences in present tense, characters first, then the setting. Only what a camera would see - no names, no story, no dialogue, no sounds, no smells, no emotions.",
+  "describeGeneration": {
+    "maxNewTokens": 600,
+    "temperature": 0.2,
+    "repetitionPenalty": 1.1,
+    "numCtx": 4096,
+    "numGpu": 99,
+    "numBatch": 512
+  },
+  "describePrompt": "Do not continue the story. Instead, create a very detailed visual snapshot of the current scene for a text-to-image model. Always use this exact structure and order: CAMERA: one line - shot type (wide shot, medium shot, or close-up), camera angle (eye level, low angle, high angle, or over-the-shoulder), and what the frame focuses on. CHARACTERS: for every character present, in order of importance: gender and apparent age, hair color and hairstyle, eye color, skin tone, body build and height, clothing in detail (colors, materials, condition), and their exact pose, facial expression, and position in the frame. SETTING: indoor or outdoor, the room or landscape, visible furniture and objects, weather. LIGHTING: brightness, time of day, light sources, dominant colors, atmosphere. TAGS: one single line of 20-30 comma-separated booru-style tags summarizing the whole scene (example: wide shot, eye level, 1girl, long red hair, leather armor, tavern interior, fireplace, dim lighting, night). Write CAMERA through LIGHTING as compact descriptive prose in present tense. Only what a camera would see - no story, no dialogue, no sounds, no smells, no inner thoughts. Be specific and concrete; never use vague words like beautiful or mysterious.",
   "availableModels": [
     {
       "id": "smollm2:135m",

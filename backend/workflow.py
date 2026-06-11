@@ -57,15 +57,17 @@ async def run_summarize(game: dict, turns: list, config: dict):
         return
 
     chunk_size = config.get("summarizeAfterMessages", 6)
+    n_chunks = (len(overflow) + chunk_size - 1) // chunk_size
+    print(f"  summarize: {len(overflow)} overflow messages → {n_chunks} chunk(s) to process")
     summary = ""
     for i in range(0, len(overflow), chunk_size):
         chunk = overflow[i:i + chunk_size]
+        chunk_num = i // chunk_size + 1
         summary = await generate_summary(game["model_id"], chunk, summary)
-        print(f"  summarize: chunk {i // chunk_size + 1} "
-              f"({len(chunk)} messages) -> {len(summary)} chars")
+        print(f"    chunk {chunk_num}/{n_chunks} ({len(chunk)} messages) → {len(summary)} chars")
 
     save_summary(game["id"], summary)
-    print(f"  summarize: saved ({len(overflow)} messages condensed)")
+    print(f"  summarize: done")
 
 
 # ── Workflow module: player intent ────────────────────────────────────────────
@@ -85,10 +87,11 @@ async def run_player_intent(game: dict, turns: list, config: dict):
         print("  player_intent: skipped (no player inputs)")
         return
 
+    print(f"  player_intent: {len(user_inputs)} player input(s) to analyze")
     intent_prompt = config.get("playerIntentPrompt") or DEFAULT_PROMPT
     intent = await generate_player_intent(game["model_id"], user_inputs, intent_prompt)
     save_player_intent(game["id"], intent)
-    print(f"  player_intent: saved ({len(user_inputs)} inputs analyzed)")
+    print(f"  player_intent: done")
 
 
 # ── Registry — append future workflow modules here ────────────────────────────
@@ -112,8 +115,8 @@ async def main():
     ).fetchall()]
     conn.close()
 
-    print(f"Workflow: {len(games)} game(s), {len(MODULES)} module(s)")
-    for game in games:
+    print(f"Workflow: {len(games)} game(s), {len(MODULES)} module(s)\n")
+    for game_idx, game in enumerate(games, 1):
         conn = get_db()
         turns = [dict(r) for r in conn.execute(
             "SELECT * FROM turns WHERE game_id=? ORDER BY turn_index",
@@ -121,12 +124,14 @@ async def main():
         ).fetchall()]
         conn.close()
 
-        print(f"Game {game['id']} — \"{game['title']}\" ({len(turns)} turns)")
-        for name, run in MODULES:
+        print(f"[{game_idx}/{len(games)}] Game {game['id']} — \"{game['title']}\" ({len(turns)} turns)")
+        for mod_idx, (name, run) in enumerate(MODULES, 1):
+            print(f"  [{mod_idx}/{len(MODULES)}] {name}")
             try:
                 await run(game, turns, config)
             except Exception as exc:
                 print(f"  {name}: FAILED — {exc}")
+        print()
 
     print("Workflow finished.")
 

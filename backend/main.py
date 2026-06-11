@@ -17,7 +17,7 @@ from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
 from migrations import get_db, init_db
-from modules.describe import generate_description, get_describe_prompt
+from modules.describe import generate_description, get_describe_generation, get_describe_prompt
 from modules.player_intent import (
     fetch_user_inputs, generate_player_intent, get_intent_prompt, save_player_intent,
 )
@@ -395,7 +395,7 @@ async def describe_scene(game_id: int, request: Request):
         raise HTTPException(400, "messages required")
 
     description = await generate_description(
-        dict(game)["model_id"], messages, character, get_describe_prompt()
+        dict(game)["model_id"], messages, character, get_describe_prompt(), get_describe_generation()
     )
     return {"description": description}
 
