@@ -109,7 +109,7 @@ async def main():
 
     conn = get_db()
     games = [dict(r) for r in conn.execute(
-        """SELECT g.*, s.opening_text AS opening_text
+        """SELECT g.*, s.first_mes AS opening_text
            FROM games g LEFT JOIN scenarios s ON s.game_id = g.id
            ORDER BY g.id"""
     ).fetchall()]

@@ -11,7 +11,6 @@ erDiagram
         TEXT scenario_id
         TEXT model_id
         TEXT system_prompt
-        TEXT custom_prompt
         TEXT story_summary
         INTEGER summarize_enabled
         TEXT player_intent
@@ -25,9 +24,18 @@ erDiagram
         INTEGER game_id PK
         TEXT name
         TEXT icon
+        TEXT creator_notes
         TEXT description
-        TEXT scenario_prompt
-        TEXT opening_text
+        TEXT personality
+        TEXT scenario
+        TEXT first_mes
+        TEXT mes_example
+        TEXT system_prompt
+        TEXT post_history_instructions
+        TEXT alternate_greetings
+        TEXT tags
+        TEXT creator
+        TEXT character_version
     }
 
     turns {
@@ -111,8 +119,7 @@ erDiagram
 
 | Field | Description |
 |---|---|
-| `system_prompt` | Global narrator prompt (writing style, general rules) — editable in the Plot tab |
-| `custom_prompt` | Additional writing style / narrative rules appended after system_prompt |
+| `system_prompt` | Merged global narrator prompt (writing style, general rules) — editable in the Plot tab. The former `custom_prompt` was folded into this field. |
 | `story_summary` | Running summary of turns that have been trimmed from the context window |
 | `summarize_enabled` | 1 = auto-summarize trimmed turns into `story_summary` (default), 0 = off — editable via the switch in the Model tab |
 | `player_intent` | Generated narrator instruction from analyzing all player inputs (what the player wants) — injected into the system prompt |
@@ -121,14 +128,24 @@ erDiagram
 
 ### scenarios
 
+Columns mirror the [Character Card V2 spec](https://github.com/malfoyslastname/character-card-spec-v2/blob/main/spec_v2.md) (`data.*` fields).
+
 | Field | Description |
 |---|---|
 | `game_id` | PK and FK to games — enforces 1:1 relationship |
-| `name` | Display name shown in the UI (e.g. "Dungeons & Dragons") |
-| `icon` | Emoji icon displayed on the scenario card and game header |
-| `description` | One-line pitch on the scenario card |
-| `scenario_prompt` | Scenario-specific narrator prompt (world setting, scenario rules) — moved from games, editable in the Scenario tab |
-| `opening_text` | Opening narrative shown as the first story segment — moved from games |
+| `name` | Card name shown in the UI — the value of the `{{char}}` macro |
+| `icon` | Emoji icon (app extension; in card files: `extensions.storytelling.icon`) |
+| `creator_notes` | One-line UI pitch — never included in the prompt (was old `description`) |
+| `description` | Main card content — injected into every prompt after the system prompts; editable in the Scenario tab |
+| `personality` | Short personality summary, injected as `{{char}}'s personality: …` when set |
+| `scenario` | Circumstances of the story, injected as `Scenario: …` when set |
+| `first_mes` | Opening narrative seeded as the first assistant message (was `opening_text`); editable + swappable against alternate greetings while the game is fresh |
+| `mes_example` | Example dialogue, injected as `Example dialogue:` when set |
+| `system_prompt` | Scenario system prompt (world rules, was `scenario_prompt`) — appended AFTER the global system prompt |
+| `post_history_instructions` | Injected as a system message AFTER the chat history — always the last prompt part |
+| `alternate_greetings` | JSON array of alternative `first_mes` values — dropdown on fresh games, editable in the Scenario tab |
+| `tags` | JSON array of strings |
+| `creator` / `character_version` | Card provenance metadata |
 
 ### turns
 

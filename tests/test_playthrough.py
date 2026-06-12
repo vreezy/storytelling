@@ -65,25 +65,33 @@ class TurnRecord:
         self.error = error
 
 
+# ── Card V2 macros ─────────────────────────────────────────────────────────────
+
+def apply_macros(text, char_name="", user_name="", original=""):
+    """Replaces the Card V2 macros {{char}}, {{user}} and {{original}}."""
+    if not text:
+        return text
+    return (re.sub(r"\{\{char\}\}", char_name, text, flags=re.IGNORECASE)
+            .replace("{{user}}", user_name or "you")
+            .replace("{{original}}", original))
+
+
 # ── DungeonConfig ──────────────────────────────────────────────────────────────
 
 class DungeonConfig:
-    """Loads config.json + scenarios/<id>.json and exposes the pieces MessageBuilder needs."""
-
-    VALID_CARD_TYPES = {"location", "npc", "item", "faction", "lore"}
+    """Loads config.json + the Character Card V2 scenario from scenarios/<id>.json."""
 
     def __init__(self, config_path, scenario_id):
         config_path = Path(config_path)
         with open(config_path, encoding="utf-8") as f:
             data = json.load(f)
         self.system_prompt        = data.get("systemPrompt", "")
-        self.custom_prompt        = data.get("customSystemPrompt", "")
         self.context_max_messages = data.get("contextMaxMessages", 15)
         self.action_prompts       = data.get("actionPrompts", {})
         self.generation           = data.get("generation", {})
         self.player_intent_after  = data.get("playerIntentAfterMessages", 5)
 
-        # Load scenario from scenarios/<id>.json (project root / scenarios/)
+        # Load the V2 card from scenarios/<id>.json (id = filename, not stored in the card)
         scenarios_dir = config_path.parent / "scenarios"
         scenario_file = scenarios_dir / f"{scenario_id}.json"
         if not scenario_file.exists():
@@ -92,35 +100,37 @@ class DungeonConfig:
                 f"Available: {[p.stem for p in scenarios_dir.glob('*.json') if p.stem != 'index' and p.stem != 'schema']}"
             )
         with open(scenario_file, encoding="utf-8") as f:
-            scenario = json.load(f)
-        self._validate_scenario(scenario, scenario_file.name)
-        self.scenario = scenario
+            doc = json.load(f)
+        self._validate_card(doc, scenario_file.name)
+        self.scenario_id = scenario_id
+        self.card = doc["data"]
 
-    @classmethod
-    def _validate_scenario(cls, sc, filename):
+    @staticmethod
+    def _validate_card(doc, filename):
         errors = []
-        if not sc.get("id"):
-            errors.append('missing "id"')
-        if not sc.get("name"):
-            errors.append('missing "name"')
-        expected_id = Path(filename).stem
-        if sc.get("id") and sc["id"] != expected_id:
-            errors.append(f'"id" ("{sc["id"]}") does not match filename ("{filename}")')
-        for i, card in enumerate(sc.get("cards", [])):
-            if not card.get("type"):
-                errors.append(f"card[{i}] missing \"type\"")
-            elif card["type"] not in cls.VALID_CARD_TYPES:
-                errors.append(f"card[{i}] invalid type \"{card['type']}\"")
-            if not card.get("name"):
-                errors.append(f"card[{i}] missing \"name\"")
+        if doc.get("spec") != "chara_card_v2":
+            errors.append('"spec" must be "chara_card_v2" (V3 is not supported)')
+        data = doc.get("data") or {}
+        if not data.get("name"):
+            errors.append('missing "data.name"')
+        entries = (data.get("character_book") or {}).get("entries", [])
+        for i, e in enumerate(entries):
+            if not isinstance(e.get("content", ""), str) or not e.get("content"):
+                errors.append(f'character_book.entries[{i}] missing "content"')
+            if not isinstance(e.get("keys", []), list):
+                errors.append(f'character_book.entries[{i}] "keys" must be a list')
         if errors:
             raise ValueError(f"Scenario \"{filename}\" validation failed: {'; '.join(errors)}")
 
+    def main_character(self):
+        chars = (self.card.get("extensions", {}).get("storytelling", {})
+                 .get("mainCharacters", []))
+        return chars[0] if chars else None
+
     def build_character_context(self):
-        chars = self.scenario.get("mainCharacters", [])
-        if not chars:
+        c = self.main_character()
+        if not c:
             return ""
-        c = chars[0]
         parts = [p for p in [c.get("name"), c.get("description")] if p]
         if c.get("class"):
             parts.append(f"Class: {c['class']}")
@@ -151,9 +161,17 @@ class MessageBuilder:
             return f'[{text}]\n'
         return f'> You {text}\n'
 
+    def macro_kwargs(self):
+        mc = self.dc.main_character()
+        return {
+            "char_name": self.dc.card.get("name", ""),
+            "user_name": (mc or {}).get("name", ""),
+        }
+
     def build_cards_context(self, player_line=""):
-        cards = self.dc.scenario.get("cards", [])
-        if not cards:
+        entries = (self.dc.card.get("character_book") or {}).get("entries", [])
+        entries = [e for e in entries if e.get("enabled", True)]
+        if not entries:
             return ""
 
         search_text = " ".join(
@@ -161,25 +179,26 @@ class MessageBuilder:
         ).lower()
 
         relevant = []
-        for c in cards:
-            triggers = c.get("triggers", "") or ""
-            keywords = [t.strip().lower() for t in triggers.split(",") if t.strip()]
+        for e in sorted(entries, key=lambda e: e.get("insertion_order", 0)):
+            keywords = [k.strip().lower() for k in e.get("keys", []) if k.strip()]
             if not keywords or any(k in search_text for k in keywords):
-                relevant.append(c)
+                relevant.append(e)
 
         if not relevant:
             return ""
 
         lines = []
-        for c in relevant:
-            ctype = c.get("type", "").upper()
-            name = c.get("name", "")
-            desc = c.get("description", "")
-            lines.append(f"[{ctype}] {name}" + (f": {desc}" if desc else ""))
+        for e in relevant:
+            ctype = (e.get("extensions", {}).get("type") or "lore").upper()
+            name = e.get("name", "")
+            content = e.get("content", "")
+            lines.append(f"[{ctype}] {name}" + (f": {content}" if content else ""))
         return "World context:\n" + "\n".join(lines)
 
     def build_messages(self, action_type, player_line=None):
-        """Mirrors game.js buildMessages() exactly."""
+        """Mirrors game.js buildMessages() exactly (Card V2 assembly order)."""
+        card = self.dc.card
+        mk = self.macro_kwargs()
         char_ctx = self.dc.build_character_context()
         action_prompt = (
             "" if action_type == "continue"
@@ -187,20 +206,31 @@ class MessageBuilder:
         )
         cards_ctx = self.build_cards_context(player_line or "")
 
+        # Scenario system prompt is appended after the global one,
+        # followed by the card description (main card content).
+        card_system = card.get("system_prompt", "")
+        description = card.get("description", "")
+        personality = card.get("personality", "")
+        scenario_f  = card.get("scenario", "")
+        mes_example = card.get("mes_example", "")
+
         sys_parts = [
             self.dc.system_prompt,
-            self.dc.scenario.get("scenarioPrompt", ""),
-            self.dc.custom_prompt,
+            apply_macros(card_system, **mk) if card_system else "",
+            apply_macros(description, **mk) if description else "",
+            apply_macros(f"{{{{char}}}}'s personality: {personality}", **mk) if personality else "",
+            f"Scenario: {apply_macros(scenario_f, **mk)}" if scenario_f else "",
             char_ctx,
-            cards_ctx,
+            apply_macros(cards_ctx, **mk),
             f"Story so far: {self.story_summary}" if self.story_summary else "",
             self.player_intent,
             action_prompt,
+            f"Example dialogue:\n{apply_macros(mes_example, **mk)}" if mes_example else "",
         ]
         sys_content = "\n\n".join(p for p in sys_parts if p)
 
         history = list(self.messages)
-        # Opening text is the first assistant message — move it into sysContent
+        # Opening text (first_mes) is the first assistant message — move it into sysContent
         if history and history[0]["role"] == "assistant":
             sys_content += "\n\nStory opening: " + history[0]["content"]
             history = history[1:]
@@ -208,6 +238,11 @@ class MessageBuilder:
         msgs = [{"role": "system", "content": sys_content}] + history
         if player_line:
             msgs.append({"role": "user", "content": player_line})
+
+        # post_history_instructions: final system message after the chat history
+        phi = card.get("post_history_instructions", "")
+        if phi:
+            msgs.append({"role": "system", "content": apply_macros(phi, **mk)})
         return msgs
 
     def record_player_action(self, player_line):
@@ -350,25 +385,36 @@ class PlaythroughRunner:
             sys.exit(1)
         print(f"  Ollama: OK | DB: OK")
 
-        opening_text = self.dc.scenario.get("openingText", "")
+        card = self.dc.card
         run_hash = uuid.uuid4().hex[:6]
         game_title = f"{self.config['game_title']} #{run_hash}"
+        ext = card.get("extensions", {}).get("storytelling", {})
         game = self.client.create_game({
             "title": game_title,
-            "scenario_id": self.config["scenario_id"],
+            "scenario_id": self.dc.scenario_id,
             "model_id": self.config["model_id"],
             "system_prompt": self.dc.system_prompt,
-            "scenario_prompt": self.dc.scenario.get("scenarioPrompt", ""),
-            "custom_prompt": self.dc.custom_prompt,
-            "opening_text": opening_text,
+            "scenario_name": card.get("name", ""),
+            "scenario_icon": ext.get("icon", "📖"),
+            "creator_notes": card.get("creator_notes", ""),
+            "card_description": card.get("description", ""),
+            "personality": card.get("personality", ""),
+            "scenario": card.get("scenario", ""),
+            "first_mes": card.get("first_mes", ""),
+            "mes_example": card.get("mes_example", ""),
+            "card_system_prompt": card.get("system_prompt", ""),
+            "post_history_instructions": card.get("post_history_instructions", ""),
+            "alternate_greetings": card.get("alternate_greetings", []),
+            "tags": card.get("tags", []),
+            "creator": card.get("creator", ""),
+            "character_version": card.get("character_version", ""),
         })
         self.game_id = game["id"]
         print(f"  Game created: id={self.game_id}  \"{game_title}\"")
 
         # Persist character + world cards like setup.js does after game creation
-        chars = self.dc.scenario.get("mainCharacters", [])
-        if chars:
-            mc = chars[0]
+        mc = self.dc.main_character()
+        if mc:
             try:
                 self.client.put_character(self.game_id, {
                     "name": mc.get("name", ""),
@@ -380,24 +426,28 @@ class PlaythroughRunner:
             except Exception as e:
                 print(f"  WARNING: character save failed: {e}")
 
-        cards = self.dc.scenario.get("cards", [])
-        for i, c in enumerate(cards):
+        entries = sorted(
+            (card.get("character_book") or {}).get("entries", []),
+            key=lambda e: e.get("insertion_order", 0),
+        )
+        for i, e in enumerate(entries):
             try:
                 self.client.create_card(self.game_id, {
-                    "type": c.get("type", "lore"),
-                    "name": c.get("name", ""),
-                    "description": c.get("description", ""),
-                    "triggers": c.get("triggers", ""),
-                    "active": 1,
+                    "type": e.get("extensions", {}).get("type", "lore"),
+                    "name": e.get("name") or e.get("comment") or f"Entry {i + 1}",
+                    "description": e.get("content", ""),
+                    "triggers": ", ".join(e.get("keys", [])),
+                    "active": 0 if e.get("enabled") is False else 1,
                     "sort_order": i,
                 })
-            except Exception as e:
-                print(f"  WARNING: card \"{c.get('name', '?')}\" save failed: {e}")
-        if cards:
-            print(f"  {len(cards)} world card(s) saved")
+            except Exception as exc:
+                print(f"  WARNING: card \"{e.get('name', '?')}\" save failed: {exc}")
+        if entries:
+            print(f"  {len(entries)} world card(s) saved")
 
-        # Seed opening text as first assistant message (mirrors loadGame() in game.js)
-        self.mb.record_assistant_response(opening_text, self.context_max)
+        # Seed first_mes as first assistant message (mirrors loadGame() in game.js)
+        opening = apply_macros(card.get("first_mes", ""), **self.mb.macro_kwargs())
+        self.mb.record_assistant_response(opening, self.context_max)
 
         actions = self.config["actions"]
         gen = self.config["generation"]

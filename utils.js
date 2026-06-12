@@ -19,25 +19,37 @@ export async function loadConfig() {
 async function loadScenario(id) {
   const r = await fetch(`./scenarios/${id}.json`);
   if (!r.ok) throw new Error(`Failed to load scenario: ${id}`);
-  const sc = await r.json();
-  validateScenario(sc, id);
-  return sc;
+  const card = await r.json();
+  validateScenario(card, id);
+  // The id is derived from the filename, not stored in the card.
+  return { id, card: card.data };
 }
 
-function validateScenario(sc, filename) {
+// Validates a Character Card V2 document (chara_card_v2 spec).
+function validateScenario(card, filename) {
   const errors = [];
-  if (!sc.id)   errors.push('missing "id"');
-  if (!sc.name) errors.push('missing "name"');
-  if (sc.id !== filename) errors.push(`"id" ("${sc.id}") does not match filename ("${filename}.json")`);
-  if (sc.cards) {
-    sc.cards.forEach((c, i) => {
-      if (!c.type) errors.push(`card[${i}] missing "type"`);
-      if (!c.name) errors.push(`card[${i}] missing "name"`);
-      const validTypes = ['location', 'npc', 'item', 'faction', 'lore'];
-      if (c.type && !validTypes.includes(c.type)) errors.push(`card[${i}] invalid type "${c.type}"`);
-    });
-  }
+  if (card.spec !== 'chara_card_v2') errors.push('"spec" must be "chara_card_v2" (V3 is not supported)');
+  const data = card.data || {};
+  if (!data.name) errors.push('missing "data.name"');
+  const entries = data.character_book?.entries || [];
+  entries.forEach((e, i) => {
+    if (typeof e.content !== 'string' || !e.content) errors.push(`character_book.entries[${i}] missing "content"`);
+    if (e.keys && !Array.isArray(e.keys)) errors.push(`character_book.entries[${i}] "keys" must be an array`);
+  });
   if (errors.length) throw new Error(`Scenario "${filename}.json" validation failed: ${errors.join('; ')}`);
+}
+
+// ── Card V2 macros ────────────────────────────────────────────────────────────
+// Replaces {{char}}, {{user}} and {{original}} in card-sourced text.
+// charName: the card's data.name | userName: the player character's name.
+// original: only used when a card's system_prompt / post_history_instructions
+// override the app default (per spec, {{original}} embeds the replaced text).
+export function applyMacros(text, { charName = '', userName = '', original = '' } = {}) {
+  if (!text) return text;
+  return text
+    .replace(/\{\{char\}\}/gi, charName)
+    .replace(/\{\{user\}\}/gi, userName || 'you')
+    .replace(/\{\{original\}\}/gi, original);
 }
 
 export { initApi };

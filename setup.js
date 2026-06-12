@@ -36,12 +36,15 @@ $(async function () {
 });
 
 // ── Scenario grid ─────────────────────────────────────────────────────────────
+// Scenarios are Character Card V2 documents: sc = { id, card } where card is
+// the spec's `data` object. Icon and player-character presets live in
+// card.extensions.storytelling; the UI pitch is card.creator_notes.
 function buildScenarioGrid() {
   (state.config.scenarios || []).forEach(sc => {
     const $col = renderTemplate('tmpl-scenario-card', {
-      icon:        sc.icon,
-      name:        sc.name,
-      description: sc.description,
+      icon:        sc.card.extensions?.storytelling?.icon || '📖',
+      name:        sc.card.name,
+      description: sc.card.creator_notes || '',
     });
     $col.find('.scenario-card').attr('data-id', sc.id);
     $('#scenario-grid').append($col);
@@ -200,8 +203,8 @@ async function refreshGameList() {
       $row.find('.export-game-btn').on('click', async function (e) {
         e.stopPropagation();
         try {
-          const scenario = await getGameScenario(g.id);
-          triggerDownload(JSON.stringify(scenario, null, 2), `${scenario.id || g.id}.json`);
+          const card = await getGameScenario(g.id);  // Character Card V2 JSON
+          triggerDownload(JSON.stringify(card, null, 2), `${g.scenario_id || 'card-' + g.id}.json`);
         } catch (err) {
           showToast(`Export failed: ${err.message}`, 'danger');
         }
@@ -255,33 +258,42 @@ async function startGame() {
   if (!state.modelId || !state.scenario) return;
 
   const sc    = state.scenario;
-  const title = $('#game-title-input').val().trim() || `${sc.name} Adventure`;
+  const card  = sc.card;
+  const title = $('#game-title-input').val().trim() || `${card.name} Adventure`;
 
-  const globalPrompt   = state.config.systemPrompt || '';
-  const scenarioPrompt = sc.id === 'custom'
+  const globalPrompt     = state.config.systemPrompt || '';
+  const cardSystemPrompt = sc.id === 'custom'
     ? ($('#custom-prompt').val().trim() || 'You are a dungeon master for a text adventure.')
-    : (sc.scenarioPrompt || '');
+    : (card.system_prompt || '');
 
   let game;
   try {
     game = await createGame({
       title,
-      scenario_id:          sc.id,
-      model_id:             state.modelId,
-      system_prompt:        globalPrompt,
-      scenario_prompt:      scenarioPrompt,
-      custom_prompt:        state.config.customSystemPrompt || '',
-      opening_text:         sc.openingText || '',
-      scenario_name:        sc.name || '',
-      scenario_icon:        sc.icon || '📖',
-      scenario_description: sc.description || '',
+      scenario_id:               sc.id,
+      model_id:                  state.modelId,
+      system_prompt:             globalPrompt,
+      scenario_name:             card.name || '',
+      scenario_icon:             card.extensions?.storytelling?.icon || '📖',
+      creator_notes:             card.creator_notes || '',
+      card_description:          card.description || '',
+      personality:               card.personality || '',
+      scenario:                  card.scenario || '',
+      first_mes:                 card.first_mes || '',
+      mes_example:               card.mes_example || '',
+      card_system_prompt:        cardSystemPrompt,
+      post_history_instructions: card.post_history_instructions || '',
+      alternate_greetings:       card.alternate_greetings || [],
+      tags:                      card.tags || [],
+      creator:                   card.creator || '',
+      character_version:         card.character_version || '',
     });
   } catch (e) {
     showToast(`Could not create game: ${e.message}`, 'danger');
     return;
   }
 
-  const mc       = sc.mainCharacters?.[0];
+  const mc       = card.extensions?.storytelling?.mainCharacters?.[0];
   const charName = $('#char-name-input').val().trim();
   const charDesc = $('#char-desc-input').val().trim();
   const charClass = mc?.class || '';
@@ -289,14 +301,16 @@ async function startGame() {
     await putCharacter(game.id, { name: charName, description: charDesc, class: charClass }).catch(() => {});
   }
 
-  if (sc.cards?.length) {
+  const entries = [...(card.character_book?.entries || [])]
+    .sort((a, b) => (a.insertion_order ?? 0) - (b.insertion_order ?? 0));
+  if (entries.length) {
     await Promise.all(
-      sc.cards.map((c, i) => createCard(game.id, {
-        type:        c.type || 'lore',
-        name:        c.name,
-        description: c.description || '',
-        triggers:    c.triggers || '',
-        active:      1,
+      entries.map((e, i) => createCard(game.id, {
+        type:        e.extensions?.type || 'lore',
+        name:        e.name || e.comment || `Entry ${i + 1}`,
+        description: e.content || '',
+        triggers:    (e.keys || []).join(', '),
+        active:      e.enabled === false ? 0 : 1,
         sort_order:  i,
       }).catch(() => {}))
     );
@@ -327,7 +341,7 @@ function bindEvents() {
     state.scenario = (state.config.scenarios || []).find(s => s.id === id) || null;
     $('#custom-prompt-area').toggleClass('d-none', id !== 'custom');
 
-    const mc = state.scenario?.mainCharacters?.[0];
+    const mc = state.scenario?.card?.extensions?.storytelling?.mainCharacters?.[0];
     $('#char-name-input').val(mc?.name || '');
     $('#char-desc-input').val(mc?.description || '');
 
@@ -347,8 +361,8 @@ function bindEvents() {
     this.value = '';
     try {
       const data = JSON.parse(await file.text());
-      await importScenario(data);
-      showToast(`Scenario "${data.name}" imported.`, 'success');
+      await importScenario(data);  // expects a Character Card V2 JSON document
+      showToast(`Scenario "${data.data?.name || '?'}" imported.`, 'success');
       setTimeout(() => location.reload(), 1200);
     } catch (err) {
       showToast(`Import failed: ${err.message}`, 'danger');

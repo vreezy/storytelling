@@ -2,7 +2,7 @@
 
 ## Code execution
 
-- **No local code execution.** Python, the backend, and tests must never be run directly on the host (no `python`, `py`, `pip`, …).
+- **No local code execution — of any kind.** Nothing is ever executed directly on the host: no `python`/`py`/`pip`, no `node`/`npm`, no other interpreters or build tools.
 - Everything runs **only via podman** (e.g. `podman compose run --rm tester`).
 
 ---
@@ -36,7 +36,18 @@ All code, comments, documentation, and configuration files in this project must 
 - `setup.js` — logic for index.html
 - `game.js` — logic for game.html
 - `style.css` — shared CSS
-- Scenarios and generation parameters in `config.json`
+- Generation parameters and prompts in `config.json`; scenarios in `scenarios/`
+
+---
+
+## Scenario format — Character Card V2
+
+- Scenario files in `scenarios/` are **Character Card V2** documents (`chara_card_v2`, [spec](https://github.com/malfoyslastname/character-card-spec-v2/blob/main/spec_v2.md)). **V2 only — never V3.** JSON Schema: `scenarios/schema.json`.
+- The scenario **id is the filename** — the card does not contain an id field. `scenarios/index.json` controls the load order.
+- App-specific data lives in `data.extensions.storytelling`: `icon` (setup-screen emoji) and `mainCharacters` (suggested player characters). Imported community cards lack this — handle its absence gracefully.
+- Field usage: `creator_notes` = UI pitch (never in the prompt). `system_prompt` = scenario system prompt (world rules), appended **after** the global system prompt. `description` = main card content, injected into every prompt right after the system prompts (also editable in the Scenario tab). `first_mes` = opening message (highlighted + swappable against `alternate_greetings` while the game has no turns). `character_book.entries` = world cards (`keys` array → `world_cards.triggers` comma string). `post_history_instructions` = system message injected **after** the chat history, always the last prompt part.
+- **Macros** `{{char}}` (card name) and `{{user}}` (player character name) are replaced at prompt-build time; `{{original}}` is replaced with an empty string (the global prompt is always included). Implementations: `applyMacros` in `utils.js` and `apply_macros` in `tests/test_playthrough.py` — keep both in sync, same for `buildMessages` (game.js) and `MessageBuilder.build_messages` (test).
+- The global narrator prompt is a **single** `systemPrompt` (config.json) / `games.system_prompt` (DB) — the former `customSystemPrompt`/`custom_prompt` no longer exist.
 
 ---
 

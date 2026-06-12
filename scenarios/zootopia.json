@@ -1,63 +1,104 @@
 {
-  "id": "zootopia",
-  "name": "Animal City",
-  "icon": "🦊",
-  "description": "A metropolis of anthropomorphic animals — species, scale, and secrets",
-  "scenarioPrompt": "Anthropomorphic animal city. Districts: Tundratown (arctic, polar bears, foxes), Sahara Square (lions, cheetahs), Rainforest District (tree-dwellers), Little Rodentia (tiny scale), Downtown (mixed). Size matters: polar bear vs. mouse is enormous. Foxes clever, rabbits underestimated, wolves pack-minded, elephants never forget. Old prejudices simmer beneath modern surfaces. all Aninals are Anthropomophics. there are NO Humans or normal animals only Anthropomorphic animals. the Animals act like humans. they have jobs and the same technoligie as real world humans.",
-  "openingText": "The ZPD precinct smells like burned coffee and damp fur — the usual morning cocktail. Across the bullpen, Captain Bogo is reading the overnight report with the expression he reserves for things that are going to make his Tuesday impossible. You can already see your name on the assignment board, and the case number beside it belongs to a missing-persons file that three other officers quietly let go cold. Nobody wanted it. Now it's yours.",
-  "mainCharacters": [
-    {
-      "name": "Judy Hopps",
-      "class": "ZPD Detective / Officer",
-      "description": "First rabbit ever on the Zootopia Police Department. From Bunnyburrow, where nobody expected her to make it. Relentlessly optimistic, embarrassingly earnest, and sharper than anyone gives her credit for. Currently assigned the cases no one else wanted — which means she gets to prove herself on the ones that actually matter."
+  "$schema": "./schema.json",
+  "spec": "chara_card_v2",
+  "spec_version": "2.0",
+  "data": {
+    "name": "Animal City",
+    "description": "You play {{user}}, a detective in a metropolis of anthropomorphic animals — from arctic Tundratown to mouse-scale Little Rodentia. A missing-persons case nobody wanted lands on your desk, and it leads through every district and every old prejudice the city pretends it outgrew.",
+    "personality": "",
+    "scenario": "",
+    "first_mes": "The ZPD precinct smells like burned coffee and damp fur — the usual morning cocktail. Across the bullpen, Captain Bogo is reading the overnight report with the expression he reserves for things that are going to make his Tuesday impossible. You can already see your name on the assignment board, and the case number beside it belongs to a missing-persons file that three other officers quietly let go cold. Nobody wanted it. Now it's yours.",
+    "mes_example": "",
+    "creator_notes": "A metropolis of anthropomorphic animals — species, scale, and secrets",
+    "system_prompt": "Anthropomorphic animal city. Districts: Tundratown (arctic, polar bears, foxes), Sahara Square (lions, cheetahs), Rainforest District (tree-dwellers), Little Rodentia (tiny scale), Downtown (mixed). Size matters: polar bear vs. mouse is enormous. Foxes clever, rabbits underestimated, wolves pack-minded, elephants never forget. Old prejudices simmer beneath modern surfaces. all Aninals are Anthropomophics. there are NO Humans or normal animals only Anthropomorphic animals. the Animals act like humans. they have jobs and the same technoligie as real world humans.",
+    "post_history_instructions": "",
+    "alternate_greetings": [
+      "Rain in the Rainforest District is permanent, but tonight it feels personal. The tip came from a sloth postal worker who took three minutes to say one sentence — but the sentence was worth it: the missing otter from your cold case was seen alive two nights ago, boarding a private gondola to Tundratown with a polar bear in a tailored suit.",
+      "Nick Wilde slides into the booth across from you at the all-night diner, two coffees already in hand, which means he wants something. 'Relax, Officer. I'm here to do your job for you.' He pushes a paw-printed napkin across the table: an address in Little Rodentia, a time, and a name you've only ever seen on sealed case files.",
+      "Chief Bogo closes his office door, which never happens, and lowers his voice, which happens less. 'Internal Affairs took your case file an hour ago. No explanation, no paperwork.' He sets a copy on the desk — the copy that officially doesn't exist. 'You have until end of shift before I have to notice this is missing.'"
+    ],
+    "character_book": {
+      "entries": [
+        {
+          "keys": [],
+          "content": "Main precinct of the Zootopia Police Department. Bullpen: open desks, interspecies chaos, burned-coffee smell. Captain Bogo's office is glass-walled and always watching. Evidence locker on the lower level. Building scaled for mixed species — tiered desks, oversized doors, specialized equipment lockers. The assignment board is updated every morning shift.",
+          "extensions": { "type": "location" },
+          "enabled": true,
+          "insertion_order": 0,
+          "name": "ZPD Precinct One"
+        },
+        {
+          "keys": [],
+          "content": "Downtown: mixed species, towers, transit hubs. Tundratown: arctic enclave, polar bears, cold-blooded crime (Mr. Big's territory). Sahara Square: dry heat, lions and cheetahs, upscale hotels. Little Rodentia: mouse-scale architecture — a regular mammal here is a wrecking ball. Rainforest District: humidity and canopy walkways, sloth postal service. Nocturnal District: UV-lit nightlife for owls and bats.",
+          "extensions": { "type": "lore" },
+          "enabled": true,
+          "insertion_order": 1,
+          "name": "Zootopia Districts"
+        },
+        {
+          "keys": ["tundratown", "cold", "arctic", "polar bear", "ice", "frost", "frozen", "winter", "mr big", "mob", "shrew"],
+          "content": "Arctic-temperature district enclosed by climate barriers. Home to polar bears, arctic foxes, snow leopards. Luxury hotels serve as fronts. Mr. Big operates here — a tiny arctic shrew with an outsized reputation for consequences. The cold keeps tempers slow; it also keeps evidence preserved.",
+          "extensions": { "type": "location" },
+          "enabled": true,
+          "insertion_order": 2,
+          "name": "Tundratown"
+        },
+        {
+          "keys": ["sahara", "square", "desert", "hot", "heat", "lion", "cheetah", "sand", "sun", "leopard"],
+          "content": "Heated district with sand-blown streets and upscale establishments. Lions, cheetahs, and other large predators run businesses here — some more legitimate than others. The heat makes everyone move slower and watch more carefully.",
+          "extensions": { "type": "location" },
+          "enabled": true,
+          "insertion_order": 3,
+          "name": "Sahara Square"
+        },
+        {
+          "keys": ["little rodentia", "tiny", "mouse", "hamster", "rodent", "small", "miniature", "shrunken", "scale"],
+          "content": "A district built at mouse scale. Buildings, streets, vehicles — all miniaturized. For a rabbit-sized officer, navigation is clumsy; for anything larger, the district is fragile and civilians are terrified. High-value smuggling routes run through here because large mammals can't follow.",
+          "extensions": { "type": "location" },
+          "enabled": true,
+          "insertion_order": 4,
+          "name": "Little Rodentia"
+        },
+        {
+          "keys": ["nick", "wilde", "fox", "partner", "con", "sly", "informant", "street", "hustle", "red fox"],
+          "content": "Red fox, former con artist, now ZPD officer — or freelance informant depending on the situation. Disarmingly charming, reads every room in under three seconds. Uses the city's low expectations of foxes as camouflage. Has street contacts in every district and working knowledge of every scam in the city.",
+          "extensions": { "type": "npc" },
+          "enabled": true,
+          "insertion_order": 5,
+          "name": "Nick Wilde"
+        },
+        {
+          "keys": ["bogo", "chief", "captain", "buffalo", "assignment", "orders", "report", "precinct", "sir"],
+          "content": "Cape buffalo, commanding officer of ZPD Precinct One. Large, immovable, radiates permanent mild disappointment. By-the-book to the letter — except when results justify otherwise, which he will not admit. Has quietly rooted for Judy since her first case, though his face has never once confirmed it.",
+          "extensions": { "type": "npc" },
+          "enabled": true,
+          "insertion_order": 6,
+          "name": "Chief Bogo"
+        },
+        {
+          "keys": ["mr big", "big", "crime", "mob", "godfather", "underworld", "shrew", "arctic shrew", "fru fru", "tundratown crime"],
+          "content": "Arctic shrew. The most feared crime boss in Tundratown. Impeccable white suits, soft voice, consequences that are final. His daughter Fru Fru is fond of Judy, which is the only reason Judy is still walking. Respects honesty and despises betrayal in equal, lethal measure.",
+          "extensions": { "type": "npc" },
+          "enabled": true,
+          "insertion_order": 7,
+          "name": "Mr. Big"
+        }
+      ]
+    },
+    "tags": ["zootopia", "detective", "anthro"],
+    "creator": "",
+    "character_version": "1.0",
+    "extensions": {
+      "storytelling": {
+        "icon": "🦊",
+        "mainCharacters": [
+          {
+            "name": "Judy Hopps",
+            "class": "ZPD Detective / Officer",
+            "description": "First rabbit ever on the Zootopia Police Department. From Bunnyburrow, where nobody expected her to make it. Relentlessly optimistic, embarrassingly earnest, and sharper than anyone gives her credit for. Currently assigned the cases no one else wanted — which means she gets to prove herself on the ones that actually matter."
+          }
+        ]
+      }
     }
-  ],
-  "cards": [
-    {
-      "type": "location",
-      "name": "ZPD Precinct One",
-      "description": "Main precinct of the Zootopia Police Department. Bullpen: open desks, interspecies chaos, burned-coffee smell. Captain Bogo's office is glass-walled and always watching. Evidence locker on the lower level. Building scaled for mixed species — tiered desks, oversized doors, specialized equipment lockers. The assignment board is updated every morning shift."
-    },
-    {
-      "type": "lore",
-      "name": "Zootopia Districts",
-      "description": "Downtown: mixed species, towers, transit hubs. Tundratown: arctic enclave, polar bears, cold-blooded crime (Mr. Big's territory). Sahara Square: dry heat, lions and cheetahs, upscale hotels. Little Rodentia: mouse-scale architecture — a regular mammal here is a wrecking ball. Rainforest District: humidity and canopy walkways, sloth postal service. Nocturnal District: UV-lit nightlife for owls and bats."
-    },
-    {
-      "type": "location",
-      "name": "Tundratown",
-      "description": "Arctic-temperature district enclosed by climate barriers. Home to polar bears, arctic foxes, snow leopards. Luxury hotels serve as fronts. Mr. Big operates here — a tiny arctic shrew with an outsized reputation for consequences. The cold keeps tempers slow; it also keeps evidence preserved.",
-      "triggers": "tundratown, cold, arctic, polar bear, ice, frost, frozen, winter, mr big, mob, shrew"
-    },
-    {
-      "type": "location",
-      "name": "Sahara Square",
-      "description": "Heated district with sand-blown streets and upscale establishments. Lions, cheetahs, and other large predators run businesses here — some more legitimate than others. The heat makes everyone move slower and watch more carefully.",
-      "triggers": "sahara, square, desert, hot, heat, lion, cheetah, sand, sun, leopard"
-    },
-    {
-      "type": "location",
-      "name": "Little Rodentia",
-      "description": "A district built at mouse scale. Buildings, streets, vehicles — all miniaturized. For a rabbit-sized officer, navigation is clumsy; for anything larger, the district is fragile and civilians are terrified. High-value smuggling routes run through here because large mammals can't follow.",
-      "triggers": "little rodentia, tiny, mouse, hamster, rodent, small, miniature, shrunken, scale"
-    },
-    {
-      "type": "npc",
-      "name": "Nick Wilde",
-      "description": "Red fox, former con artist, now ZPD officer — or freelance informant depending on the situation. Disarmingly charming, reads every room in under three seconds. Uses the city's low expectations of foxes as camouflage. Has street contacts in every district and working knowledge of every scam in the city.",
-      "triggers": "nick, wilde, fox, partner, con, sly, informant, street, hustle, red fox"
-    },
-    {
-      "type": "npc",
-      "name": "Chief Bogo",
-      "description": "Cape buffalo, commanding officer of ZPD Precinct One. Large, immovable, radiates permanent mild disappointment. By-the-book to the letter — except when results justify otherwise, which he will not admit. Has quietly rooted for Judy since her first case, though his face has never once confirmed it.",
-      "triggers": "bogo, chief, captain, buffalo, assignment, orders, report, precinct, sir"
-    },
-    {
-      "type": "npc",
-      "name": "Mr. Big",
-      "description": "Arctic shrew. The most feared crime boss in Tundratown. Impeccable white suits, soft voice, consequences that are final. His daughter Fru Fru is fond of Judy, which is the only reason Judy is still walking. Respects honesty and despises betrayal in equal, lethal measure.",
-      "triggers": "mr big, big, crime, mob, godfather, underworld, shrew, arctic shrew, fru fru, tundratown crime"
-    }
-  ]
+  }
 }
