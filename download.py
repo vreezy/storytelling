@@ -14,8 +14,8 @@ import sys
 import tarfile
 import urllib.request
 
-LIBS_DIR   = "/downloads/libs"
-MODELS_DIR = "/downloads/models"
+LIBS_DIR   = os.environ.get("LIBS_DIR",   "/downloads/libs")
+MODELS_DIR = os.environ.get("MODELS_DIR", "/downloads/models")
 
 LIBS_ONLY = "--libs-only" in sys.argv
 

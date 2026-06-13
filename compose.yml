@@ -17,7 +17,7 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_PATH=/app/data/story.db
-      - OLLAMA_HOST=http://172.24.0.1:11434
+      - OLLAMA_HOST  # set in .env to override auto-detection
     restart: unless-stopped
 
   # One-shot: offline workflow — regenerates story summaries for all games
@@ -34,7 +34,7 @@ services:
       sh -c "(python -c 'import httpx' 2>/dev/null || pip install -q --retries 10 --timeout 300 httpx) && python workflow.py"
     environment:
       - DATABASE_PATH=/app/data/story.db
-      - OLLAMA_HOST=http://172.24.0.1:11434
+      - OLLAMA_HOST  # set in .env to override auto-detection
 
   # One-shot: plays 30 turns and writes an analysis report to tests/reports/
   # Run with: podman compose run --rm tester
@@ -50,15 +50,6 @@ services:
     tty: true
     depends_on:
       - backend
-
-  # One-shot: downloads Bootstrap + jQuery into libs/
-  # Run once with: podman compose run --rm downloader
-  downloader:
-    image: python:3.13-slim
-    volumes:
-      - .:/downloads
-    working_dir: /downloads
-    command: python download.py --libs-only
 
 # Shared pip download cache — survives container re-creation
 volumes:

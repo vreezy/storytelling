@@ -344,7 +344,7 @@ aidungeon/
 → The Windows Firewall must allow inbound TCP 11434 from the Podman VM subnet (`172.24.0.0/20`). Run once **as Administrator**:
 
 ```powershell
-netsh advfirewall firewall add rule name="Ollama Podman" dir=in action=allow protocol=TCP localport=11434 remoteip=172.24.0.0/255.255.240.0
+New-NetFirewallRule -DisplayName "Ollama Podman" -Direction Inbound -Action Allow -Protocol TCP -LocalPort 11434 -RemoteAddress "172.24.0.0/20"
 ```
 
 → After adding the rule, restart the backend: `podman compose restart backend`

@@ -2,7 +2,8 @@
 NUL
 models/
 libs/
-data/
+data/*
+!data/.gitkeep
 __pycache__/
 *.pyc
 /tests/reports/

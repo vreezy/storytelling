@@ -75,7 +75,7 @@ _GAME_SELECT = """
 @app.get("/api/health")
 async def health():
     try:
-        async with httpx.AsyncClient(timeout=3) as client:
+        async with httpx.AsyncClient(timeout=2) as client:
             r = await client.get(f"{OLLAMA_HOST}/api/tags")
             ollama_ok = r.status_code == 200
     except Exception:
@@ -96,11 +96,16 @@ async def health():
 
 @app.get("/api/models")
 async def list_models():
-    async with httpx.AsyncClient(timeout=10) as client:
-        r = await client.get(f"{OLLAMA_HOST}/api/tags")
-        if r.status_code != 200:
-            raise HTTPException(502, "Ollama unreachable")
-        return r.json()
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            r = await client.get(f"{OLLAMA_HOST}/api/tags")
+            if r.status_code != 200:
+                raise HTTPException(502, "Ollama unreachable")
+            return r.json()
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(502, "Ollama unreachable")
 
 
 @app.post("/api/models/pull")
