@@ -1,3 +1,11 @@
 {
-  "scenarios": ["fantasy", "scifi", "horror", "zootopia", "overlord", "custom"]
+  "scenarios": [
+    "fantasy",
+    "scifi",
+    "horror",
+    "zootopia",
+    "overlord",
+    "custom",
+    "verochka"
+  ]
 }

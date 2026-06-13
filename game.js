@@ -887,7 +887,7 @@ function buildAltGreetingEl(text) {
       <button class="btn btn-sm btn-outline-danger align-self-start alt-greeting-del" title="Remove">✕</button>
     </div>
   `);
-  $el.find('.alt-greeting-text').val(text);
+  $el.find('.alt-greeting-text').val(text).on('blur', saveScenario);
   $el.find('.alt-greeting-del').on('click', function () { $(this).closest('.alt-greeting-item').remove(); });
   return $el;
 }
@@ -896,6 +896,55 @@ function collectAltGreetings() {
   return $('#alt-greetings-list .alt-greeting-text').map(function () {
     return $(this).val().trim();
   }).get().filter(Boolean);
+}
+
+async function saveScenario() {
+  const payload = {
+    scenario_name:             $('#scenario-name-edit').val().trim(),
+    scenario_icon:             $('#scenario-icon-edit').val().trim(),
+    creator_notes:             $('#scenario-desc-edit').val().trim(),
+    card_description:          $('#scenario-description-edit').val(),
+    personality:               $('#scenario-personality-edit').val(),
+    scenario:                  $('#scenario-scenario-edit').val(),
+    first_mes:                 $('#scenario-first-mes-edit').val(),
+    mes_example:               $('#scenario-mes-example-edit').val(),
+    card_system_prompt:        $('#scenario-prompt-edit').val(),
+    post_history_instructions: $('#scenario-phi-edit').val(),
+    alternate_greetings:       collectAltGreetings(),
+    tags:                      $('#scenario-tags-edit').val().split(',').map(t => t.trim()).filter(Boolean),
+    creator:                   $('#scenario-creator-edit').val().trim(),
+    character_version:         $('#scenario-version-edit').val().trim(),
+  };
+  try {
+    await putGame(state.gameId, payload);
+    const firstMesChanged = payload.first_mes !== state.cardFirstMes;
+    state.scenario.name  = payload.scenario_name || state.scenario.name;
+    state.scenario.icon  = payload.scenario_icon || state.scenario.icon;
+    state.scenario.description = payload.creator_notes;
+    state.cardDescription = payload.card_description;
+    state.cardPersonality = payload.personality;
+    state.cardScenario    = payload.scenario;
+    state.cardFirstMes    = payload.first_mes;
+    state.mesExample      = payload.mes_example;
+    state.cardSystemPrompt = payload.card_system_prompt;
+    state.postHistoryInstructions = payload.post_history_instructions;
+    state.cardAlternateGreetings = payload.alternate_greetings;
+    state.cardTags        = payload.tags;
+    state.cardCreator     = payload.creator;
+    state.cardCharacterVersion = payload.character_version;
+    $('#scenario-title').text(`${state.scenario.icon} ${state.scenario.name}`.trim());
+    if (firstMesChanged && state.segments[0]?.field === 'first_mes'
+        && state.segments[0]?.cssClass?.includes('opening-fresh')) {
+      const opening = applyMacros(payload.first_mes, macroContext());
+      state.segments[0] = { ...state.segments[0], text: opening + '\n\n' };
+      state.messages[0] = { role: 'assistant', content: opening };
+      rebuildStoryDisplay();
+    }
+    renderOpeningPicker(!$('#opening-picker').hasClass('d-none'));
+    showToast('Scenario saved.', 'success');
+  } catch {
+    showToast('Failed to save scenario.', 'danger');
+  }
 }
 
 // ── Character sidebar ─────────────────────────────────────────────────────────
@@ -920,7 +969,7 @@ function renderCharSidebar() {
     showToast('Character saved.', 'success');
   }
 
-  $('#char-save-btn').on('click', saveCharacter);
+  $('#char-name-edit, #char-class-edit, #char-desc-edit, #char-notes-edit').on('blur', saveCharacter);
 }
 
 // ── World Cards ───────────────────────────────────────────────────────────────
@@ -1118,56 +1167,12 @@ function bindEvents() {
       });
   });
 
-  // Scenario tab: full Character Card V2 editor
-  $('#scenario-save-btn').on('click', async () => {
-    const payload = {
-      scenario_name:             $('#scenario-name-edit').val().trim(),
-      scenario_icon:             $('#scenario-icon-edit').val().trim(),
-      creator_notes:             $('#scenario-desc-edit').val().trim(),
-      card_description:          $('#scenario-description-edit').val(),
-      personality:               $('#scenario-personality-edit').val(),
-      scenario:                  $('#scenario-scenario-edit').val(),
-      first_mes:                 $('#scenario-first-mes-edit').val(),
-      mes_example:               $('#scenario-mes-example-edit').val(),
-      card_system_prompt:        $('#scenario-prompt-edit').val(),
-      post_history_instructions: $('#scenario-phi-edit').val(),
-      alternate_greetings:       collectAltGreetings(),
-      tags:                      $('#scenario-tags-edit').val().split(',').map(t => t.trim()).filter(Boolean),
-      creator:                   $('#scenario-creator-edit').val().trim(),
-      character_version:         $('#scenario-version-edit').val().trim(),
-    };
-    try {
-      await putGame(state.gameId, payload);
-      const firstMesChanged = payload.first_mes !== state.cardFirstMes;
-      state.scenario.name  = payload.scenario_name || state.scenario.name;
-      state.scenario.icon  = payload.scenario_icon || state.scenario.icon;
-      state.scenario.description = payload.creator_notes;
-      state.cardDescription = payload.card_description;
-      state.cardPersonality = payload.personality;
-      state.cardScenario    = payload.scenario;
-      state.cardFirstMes    = payload.first_mes;
-      state.mesExample      = payload.mes_example;
-      state.cardSystemPrompt = payload.card_system_prompt;
-      state.postHistoryInstructions = payload.post_history_instructions;
-      state.cardAlternateGreetings = payload.alternate_greetings;
-      state.cardTags        = payload.tags;
-      state.cardCreator     = payload.creator;
-      state.cardCharacterVersion = payload.character_version;
-      $('#scenario-title').text(`${state.scenario.icon} ${state.scenario.name}`.trim());
-      // Fresh game: reflect an edited first_mes in the story view + picker
-      if (firstMesChanged && state.segments[0]?.field === 'first_mes'
-          && state.segments[0]?.cssClass?.includes('opening-fresh')) {
-        const opening = applyMacros(payload.first_mes, macroContext());
-        state.segments[0] = { ...state.segments[0], text: opening + '\n\n' };
-        state.messages[0] = { role: 'assistant', content: opening };
-        rebuildStoryDisplay();
-      }
-      renderOpeningPicker(!$('#opening-picker').hasClass('d-none'));
-      showToast('Scenario saved.', 'success');
-    } catch {
-      showToast('Failed to save scenario.', 'danger');
-    }
-  });
+  // Scenario tab: autosave on blur
+  $('#scenario-icon-edit, #scenario-name-edit, #scenario-desc-edit, ' +
+    '#scenario-description-edit, #scenario-personality-edit, #scenario-scenario-edit, ' +
+    '#scenario-first-mes-edit, #scenario-mes-example-edit, #scenario-prompt-edit, ' +
+    '#scenario-phi-edit, #scenario-tags-edit, #scenario-creator-edit, #scenario-version-edit')
+    .on('blur', saveScenario);
 
   // Scenario tab: add an alternate greeting
   $('#alt-greeting-add').on('click', () => {
