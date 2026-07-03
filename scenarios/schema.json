@@ -1,141 +1,66 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "scenario.schema.json",
-  "title": "Character Card V2",
-  "description": "Character Card V2 (chara_card_v2) — hand-translated to JSON Schema from the official TypeScript spec: https://github.com/malfoyslastname/character-card-spec-v2/blob/main/spec_v2.md. StoryTelling app-specific data lives in data.extensions.storytelling. The scenario id is derived from the filename, not stored in the card.",
+  "title": "Scenario",
+  "description": "A single StoryTelling scenario definition.",
   "type": "object",
-  "required": ["spec", "spec_version", "data"],
+  "required": ["id", "name"],
+  "additionalProperties": false,
   "properties": {
-    "$schema": { "type": "string" },
-    "spec": { "const": "chara_card_v2" },
-    "spec_version": { "const": "2.0" },
-    "data": {
-      "type": "object",
-      "required": ["name"],
-      "properties": {
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "description": "Card name — the value of the {{char}} macro."
-        },
-        "description": {
-          "type": "string",
-          "description": "Main card content — injected into every prompt, after the system prompts. Also shown in the Scenario tab."
-        },
-        "personality": {
-          "type": "string",
-          "description": "Short personality summary. Injected as \"{{char}}'s personality: ...\" when non-empty."
-        },
-        "scenario": {
-          "type": "string",
-          "description": "Circumstances and context of the story. Injected as \"Scenario: ...\" when non-empty."
-        },
-        "first_mes": {
-          "type": "string",
-          "description": "Opening text — seeded as the first assistant message."
-        },
-        "mes_example": {
-          "type": "string",
-          "description": "Example dialogue, conversations separated by <START>. Injected as example text when non-empty."
-        },
-        "creator_notes": {
-          "type": "string",
-          "description": "UI-only pitch shown on the setup screen. Never included in the prompt."
-        },
-        "system_prompt": {
-          "type": "string",
-          "description": "Scenario system prompt (world rules) — appended AFTER the app's global system prompt. {{original}} is replaced with an empty string since the global prompt is always included."
-        },
-        "post_history_instructions": {
-          "type": "string",
-          "description": "Injected as a system message AFTER the chat history — the strongest instruction slot."
-        },
-        "alternate_greetings": {
-          "type": "array",
-          "items": { "type": "string" },
-          "description": "Alternative first_mes values — selectable via dropdown while the game is fresh (no turns yet)."
-        },
-        "character_book": {
-          "type": "object",
-          "description": "Embedded lorebook — becomes the game's world cards.",
-          "properties": {
-            "name": { "type": "string" },
-            "description": { "type": "string" },
-            "scan_depth": { "type": "integer" },
-            "token_budget": { "type": "integer" },
-            "recursive_scanning": { "type": "boolean" },
-            "extensions": { "type": "object" },
-            "entries": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "required": ["keys", "content"],
-                "properties": {
-                  "keys": {
-                    "type": "array",
-                    "items": { "type": "string" },
-                    "description": "Trigger keywords. Empty array = always injected (pinned)."
-                  },
-                  "content": { "type": "string" },
-                  "extensions": {
-                    "type": "object",
-                    "properties": {
-                      "type": {
-                        "type": "string",
-                        "enum": ["location", "npc", "item", "faction", "lore"],
-                        "description": "StoryTelling card type (app extension)."
-                      }
-                    }
-                  },
-                  "enabled": { "type": "boolean" },
-                  "insertion_order": { "type": "integer" },
-                  "case_sensitive": { "type": "boolean" },
-                  "name": { "type": "string" },
-                  "priority": { "type": "integer" },
-                  "id": { "type": "integer" },
-                  "comment": { "type": "string" },
-                  "selective": { "type": "boolean" },
-                  "secondary_keys": { "type": "array", "items": { "type": "string" } },
-                  "constant": { "type": "boolean" },
-                  "position": { "type": "string", "enum": ["before_char", "after_char"] }
-                }
-              }
-            }
-          }
-        },
-        "tags": {
-          "type": "array",
-          "items": { "type": "string" }
-        },
-        "creator": { "type": "string" },
-        "character_version": { "type": "string" },
-        "extensions": {
-          "type": "object",
-          "description": "App-specific data. Other applications must preserve unknown keys.",
-          "properties": {
-            "storytelling": {
-              "type": "object",
-              "description": "StoryTelling app extension.",
-              "properties": {
-                "icon": {
-                  "type": "string",
-                  "description": "Emoji shown on the setup screen."
-                },
-                "mainCharacters": {
-                  "type": "array",
-                  "description": "Suggested player characters — pre-fill the character form.",
-                  "items": {
-                    "type": "object",
-                    "required": ["name"],
-                    "properties": {
-                      "name": { "type": "string", "minLength": 1 },
-                      "class": { "type": "string" },
-                      "description": { "type": "string" }
-                    }
-                  }
-                }
-              }
-            }
+    "id": {
+      "type": "string",
+      "description": "Unique identifier — must match the filename (without .json).",
+      "pattern": "^[a-z0-9_-]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "icon": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "scenarioPrompt": {
+      "type": ["string", "null"],
+      "description": "Scenario-specific narrator instructions injected into every prompt."
+    },
+    "openingText": {
+      "type": ["string", "null"],
+      "description": "First narrative paragraph shown to the player. Seeded as the first assistant message."
+    },
+    "mainCharacters": {
+      "type": "array",
+      "description": "Pre-filled character suggestions shown on the setup screen.",
+      "items": {
+        "type": "object",
+        "required": ["name"],
+        "additionalProperties": false,
+        "properties": {
+          "name":        { "type": "string", "minLength": 1 },
+          "class":       { "type": "string" },
+          "description": { "type": "string" }
+        }
+      }
+    },
+    "cards": {
+      "type": "array",
+      "description": "World-context cards injected into the prompt when trigger keywords match.",
+      "items": {
+        "type": "object",
+        "required": ["type", "name"],
+        "additionalProperties": false,
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["location", "npc", "item", "faction", "lore"]
+          },
+          "name":        { "type": "string", "minLength": 1 },
+          "description": { "type": "string" },
+          "triggers": {
+            "type": "string",
+            "description": "Comma-separated keywords. Empty = always injected (pinned)."
           }
         }
       }

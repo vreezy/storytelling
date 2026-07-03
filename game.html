@@ -37,16 +37,6 @@
 
       <!-- Left: story + action input -->
       <div class="d-flex flex-column flex-grow-1 overflow-hidden">
-        <!-- Fresh-game opening picker: shown until the first action is sent -->
-        <div id="opening-picker" class="container px-3 px-md-4 pt-3 d-none">
-          <div class="opening-picker-box">
-            <div class="small mb-2">
-              📜 <strong>This is your story's start text.</strong> Click it to edit it freely,
-              or pick one of the alternative openings below. The selection disappears after your first action.
-            </div>
-            <select id="opening-select" class="form-select form-select-sm"></select>
-          </div>
-        </div>
         <div id="story-text" class="flex-grow-1 overflow-auto p-3 p-md-4 container"></div>
 
         <!-- Debug panel (collapsible) -->
@@ -207,60 +197,24 @@
             <input id="scenario-icon-edit" class="form-control form-control-sm" style="width:4rem" placeholder="🌍">
             <input id="scenario-name-edit" class="form-control form-control-sm flex-grow-1" placeholder="Scenario name">
           </div>
-          <label class="small text-secondary d-block mb-1">Creator Notes (one-line pitch — UI only)</label>
-          <input id="scenario-desc-edit" class="form-control form-control-sm mb-2" placeholder="One-line pitch shown on the setup screen">
-
-          <label class="small text-secondary d-block mb-1">Description (main card content — injected into the prompt)</label>
-          <textarea id="scenario-description-edit" class="form-control form-control-sm mb-2" rows="4"
-                    placeholder="What this scenario/character is — included in every prompt…"></textarea>
-
-          <label class="small text-secondary d-block mb-1">Scenario System Prompt (world rules — appended after the global system prompt)</label>
-          <textarea id="scenario-prompt-edit" class="form-control form-control-sm mb-2" rows="8"
+          <input id="scenario-desc-edit" class="form-control form-control-sm mb-2" placeholder="One-line description">
+          <label class="small text-secondary d-block mb-1">Scenario Prompt (world setting &amp; DM rules for this scenario)</label>
+          <textarea id="scenario-prompt-edit" class="form-control form-control-sm" rows="10"
                     placeholder="You are set in a dark fantasy world…"></textarea>
-
-          <label class="small text-secondary d-block mb-1">Personality (injected as "{{char}}'s personality: …")</label>
-          <textarea id="scenario-personality-edit" class="form-control form-control-sm mb-2" rows="2"></textarea>
-
-          <label class="small text-secondary d-block mb-1">Scenario (injected as "Scenario: …")</label>
-          <textarea id="scenario-scenario-edit" class="form-control form-control-sm mb-2" rows="2"></textarea>
-
-          <label class="small text-secondary d-block mb-1">First Message (start text — first assistant message)</label>
-          <textarea id="scenario-first-mes-edit" class="form-control form-control-sm mb-2" rows="4"></textarea>
-
-          <label class="small text-secondary d-block mb-1">Alternate Greetings (alternative start texts)</label>
-          <div id="alt-greetings-list"></div>
-          <button id="alt-greeting-add" class="btn btn-sm btn-outline-secondary mb-2">+ Add greeting</button>
-
-          <label class="small text-secondary d-block mb-1">Example Dialogue (injected as "Example dialogue: …")</label>
-          <textarea id="scenario-mes-example-edit" class="form-control form-control-sm mb-2" rows="3"></textarea>
-
-          <label class="small text-secondary d-block mb-1">Post-History Instructions (injected AFTER the chat history)</label>
-          <textarea id="scenario-phi-edit" class="form-control form-control-sm mb-2" rows="3"></textarea>
-
-          <label class="small text-secondary d-block mb-1">Tags (comma separated)</label>
-          <input id="scenario-tags-edit" class="form-control form-control-sm mb-2" placeholder="fantasy, dungeon, adventure">
-
-          <div class="d-flex gap-2 mb-2">
-            <div class="flex-grow-1">
-              <label class="small text-secondary d-block mb-1">Creator</label>
-              <input id="scenario-creator-edit" class="form-control form-control-sm">
-            </div>
-            <div style="width:8rem">
-              <label class="small text-secondary d-block mb-1">Version</label>
-              <input id="scenario-version-edit" class="form-control form-control-sm" placeholder="1.0">
-            </div>
-          </div>
-
           <div class="d-flex gap-2 mt-2">
-            <button id="scenario-export-btn" class="btn btn-sm btn-outline-secondary w-100" title="Export as Character Card V2 .json">⬇ Export</button>
+            <button id="scenario-save-btn" class="btn btn-sm btn-outline-primary flex-grow-1">Save</button>
+            <button id="scenario-export-btn" class="btn btn-sm btn-outline-secondary" title="Export as .json">⬇ Export</button>
           </div>
         </div>
 
         <!-- Plot tab -->
         <div id="tab-plot" class="flex-grow-1 overflow-auto p-3 d-none">
-          <label class="small text-secondary d-block mb-1">System Prompt</label>
-          <textarea id="plot-prompt-edit" class="form-control form-control-sm" rows="12"
+          <label class="small text-secondary d-block mb-1">Global System Prompt</label>
+          <textarea id="plot-prompt-edit" class="form-control form-control-sm mb-3" rows="6"
                     placeholder="You are a creative storyteller…"></textarea>
+          <label class="small text-secondary d-block mb-1">Custom Prompt Extension</label>
+          <textarea id="custom-prompt-edit" class="form-control form-control-sm" rows="6"
+                    placeholder="Additional writing style and narrative rules…"></textarea>
           <button id="plot-save-btn" class="btn btn-sm btn-outline-primary mt-2 w-100">Save</button>
         </div>
 
@@ -268,11 +222,14 @@
         <div id="tab-debug" class="flex-grow-1 overflow-auto p-3 d-none">
           <p class="small text-secondary mb-3">Edits apply to the next action sent.</p>
 
-          <label class="form-label fw-semibold small">System Prompt</label>
+          <label class="form-label fw-semibold small">Global System Prompt</label>
           <textarea id="debug-global-prompt" class="form-control form-control-sm font-monospace mb-3" rows="5"></textarea>
 
-          <label class="form-label fw-semibold small">Scenario System Prompt</label>
+          <label class="form-label fw-semibold small">Scenario Prompt</label>
           <textarea id="debug-scenario-prompt" class="form-control form-control-sm font-monospace mb-3" rows="5"></textarea>
+
+          <label class="form-label fw-semibold small">Custom Prompt Extension</label>
+          <textarea id="debug-custom-prompt" class="form-control form-control-sm font-monospace mb-3" rows="3" readonly></textarea>
 
           <label class="form-label fw-semibold small">Character Context <span class="text-secondary">(computed)</span></label>
           <input id="debug-char-context" type="text" class="form-control form-control-sm font-monospace mb-3" readonly>
@@ -285,9 +242,6 @@
 
           <label class="form-label fw-semibold small">Action Prompt — Story</label>
           <textarea id="debug-action-story" class="form-control form-control-sm font-monospace mb-3" rows="2"></textarea>
-
-          <label class="form-label fw-semibold small">Post-History Instructions <span class="text-secondary">(last prompt part — injected after the chat history)</span></label>
-          <textarea id="debug-phi" class="form-control form-control-sm font-monospace mb-3" rows="3" readonly></textarea>
 
           <hr class="border-secondary">
 

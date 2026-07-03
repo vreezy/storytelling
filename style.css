@@ -24,21 +24,6 @@
   font-style: italic;
 }
 
-/* Fresh-game opening: highlighted, freely editable start text (first_mes) */
-.opening-fresh {
-  display: block;
-  border: 3px solid #ffc107;
-  border-radius: .5rem;
-  padding: .75rem 1rem;
-  margin-bottom: .75rem;
-}
-.opening-picker-box {
-  border: 1px solid #ffc107;
-  border-radius: .5rem;
-  background: rgba(255, 193, 7, .08);
-  padding: .75rem 1rem;
-}
-
 /* Editable segments */
 .narrative, .action { cursor: text; }
 .narrative:hover, .action:hover { background: rgba(255,255,255,.04); border-radius: 3px; }

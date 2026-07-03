@@ -47,24 +47,13 @@ app.add_middleware(
 
 # ── Shared query helper ────────────────────────────────────────────────────────
 
-# Scenario columns follow the Character Card V2 spec. Aliases avoid clashes
-# with games columns (description, system_prompt).
 _GAME_SELECT = """
     SELECT g.*,
-           s.name                      AS scenario_name,
-           s.icon                      AS scenario_icon,
-           s.creator_notes             AS creator_notes,
-           s.description               AS card_description,
-           s.personality               AS personality,
-           s.scenario                  AS scenario,
-           s.first_mes                 AS first_mes,
-           s.mes_example               AS mes_example,
-           s.system_prompt             AS card_system_prompt,
-           s.post_history_instructions AS post_history_instructions,
-           s.alternate_greetings       AS alternate_greetings,
-           s.tags                      AS tags,
-           s.creator                   AS creator,
-           s.character_version         AS character_version
+           s.name            AS scenario_name,
+           s.icon            AS scenario_icon,
+           s.description     AS scenario_description,
+           s.scenario_prompt AS scenario_prompt,
+           s.opening_text    AS opening_text
     FROM games g
     LEFT JOIN scenarios s ON s.game_id = g.id
 """
@@ -159,15 +148,16 @@ async def create_game(request: Request):
     body = await request.json()
     conn = get_db()
     cur = conn.execute(
-        """INSERT INTO games (title, description, scenario_id, model_id, system_prompt,
+        """INSERT INTO games (title, description, scenario_id, model_id, system_prompt, custom_prompt,
                               summarize_enabled, player_intent_enabled)
-           VALUES (?,?,?,?,?,?,?)""",
+           VALUES (?,?,?,?,?,?,?,?)""",
         (
             body.get("title", "Untitled Adventure"),
             body.get("description"),
             body.get("scenario_id"),
             body.get("model_id"),
             body.get("system_prompt"),
+            body.get("custom_prompt"),
             1 if body.get("summarize_enabled", 1) else 0,
             1 if body.get("player_intent_enabled", 1) else 0,
         ),
@@ -175,27 +165,15 @@ async def create_game(request: Request):
     conn.commit()
     game_id = cur.lastrowid
     conn.execute(
-        """INSERT INTO scenarios (game_id, name, icon, creator_notes, description,
-                                  personality, scenario, first_mes, mes_example,
-                                  system_prompt, post_history_instructions,
-                                  alternate_greetings, tags, creator, character_version)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+        """INSERT INTO scenarios (game_id, name, icon, description, scenario_prompt, opening_text)
+           VALUES (?,?,?,?,?,?)""",
         (
             game_id,
             body.get("scenario_name", ""),
             body.get("scenario_icon", "📖"),
-            body.get("creator_notes", ""),
-            body.get("card_description"),
-            body.get("personality"),
-            body.get("scenario"),
-            body.get("first_mes"),
-            body.get("mes_example"),
-            body.get("card_system_prompt"),
-            body.get("post_history_instructions"),
-            json.dumps(body.get("alternate_greetings", []), ensure_ascii=False),
-            json.dumps(body.get("tags", []), ensure_ascii=False),
-            body.get("creator", ""),
-            body.get("character_version", ""),
+            body.get("scenario_description", ""),
+            body.get("scenario_prompt"),
+            body.get("opening_text"),
         ),
     )
     conn.commit()
@@ -222,12 +200,9 @@ async def get_game(game_id: int):
 async def update_game(game_id: int, request: Request):
     body = await request.json()
 
-    game_fields     = ["title", "description", "num_predict", "system_prompt",
+    game_fields     = ["title", "description", "num_predict", "system_prompt", "custom_prompt",
                        "story_summary", "summarize_enabled", "player_intent_enabled"]
-    scenario_fields = ["scenario_name", "scenario_icon", "creator_notes", "card_description",
-                       "personality", "scenario", "first_mes", "mes_example",
-                       "card_system_prompt", "post_history_instructions",
-                       "alternate_greetings", "tags", "creator", "character_version"]
+    scenario_fields = ["scenario_name", "scenario_icon", "scenario_description", "scenario_prompt", "opening_text"]
 
     game_updates     = {k: body[k] for k in game_fields     if k in body}
     scenario_updates = {k: body[k] for k in scenario_fields if k in body}
@@ -241,26 +216,14 @@ async def update_game(game_id: int, request: Request):
         conn.commit()
 
     if scenario_updates:
-        # Map API field names to Card V2 column names; list fields stored as JSON
+        # Map API field names to column names
         col_map = {
-            "scenario_name":             "name",
-            "scenario_icon":             "icon",
-            "creator_notes":             "creator_notes",
-            "card_description":          "description",
-            "personality":               "personality",
-            "scenario":                  "scenario",
-            "first_mes":                 "first_mes",
-            "mes_example":               "mes_example",
-            "card_system_prompt":        "system_prompt",
-            "post_history_instructions": "post_history_instructions",
-            "alternate_greetings":       "alternate_greetings",
-            "tags":                      "tags",
-            "creator":                   "creator",
-            "character_version":         "character_version",
+            "scenario_name":        "name",
+            "scenario_icon":        "icon",
+            "scenario_description": "description",
+            "scenario_prompt":      "scenario_prompt",
+            "opening_text":         "opening_text",
         }
-        for k in ("alternate_greetings", "tags"):
-            if k in scenario_updates and not isinstance(scenario_updates[k], str):
-                scenario_updates[k] = json.dumps(scenario_updates[k], ensure_ascii=False)
         conn.execute(
             "INSERT OR IGNORE INTO scenarios (game_id) VALUES (?)", (game_id,)
         )
@@ -287,16 +250,8 @@ async def delete_game(game_id: int):
 
 # ── Scenario export / import ──────────────────────────────────────────────────
 
-def _json_or_default(text, default):
-    try:
-        return json.loads(text) if text else default
-    except (json.JSONDecodeError, TypeError):
-        return default
-
-
 @app.get("/api/games/{game_id}/scenario")
 async def export_game_scenario(game_id: int):
-    """Export the game's scenario as a Character Card V2 JSON document."""
     conn = get_db()
     game = conn.execute(_GAME_SELECT + " WHERE g.id=?", (game_id,)).fetchone()
     if not game:
@@ -311,80 +266,63 @@ async def export_game_scenario(game_id: int):
     conn.close()
 
     game = dict(game)
+    scenario_id = game.get("scenario_id") or f"game_{game_id}"
 
-    entries = []
-    for i, c in enumerate(cards):
-        triggers = c["triggers"] or ""
-        entries.append({
-            "keys":            [t.strip() for t in triggers.split(",") if t.strip()],
-            "content":         c["description"] or "",
-            "extensions":      {"type": c["type"]},
-            "enabled":         bool(c["active"]),
-            "insertion_order": i,
-            "name":            c["name"],
-        })
+    export = {
+        "id":           scenario_id,
+        "name":         game.get("scenario_name") or game.get("title", ""),
+        "icon":         game.get("scenario_icon") or "📖",
+        "description":  game.get("scenario_description") or "",
+        "scenarioPrompt": game.get("scenario_prompt") or "",
+        "openingText":  game.get("opening_text") or "",
+    }
 
-    storytelling_ext = {"icon": game.get("scenario_icon") or "📖"}
     if character:
         mc = {"name": character["name"]}
         if character["class"]:
             mc["class"] = character["class"]
         if character["description"]:
             mc["description"] = character["description"]
-        storytelling_ext["mainCharacters"] = [mc]
+        export["mainCharacters"] = [mc]
 
-    return {
-        "spec":         "chara_card_v2",
-        "spec_version": "2.0",
-        "data": {
-            "name":                      game.get("scenario_name") or game.get("title", ""),
-            "description":               game.get("card_description") or "",
-            "personality":               game.get("personality") or "",
-            "scenario":                  game.get("scenario") or "",
-            "first_mes":                 game.get("first_mes") or "",
-            "mes_example":               game.get("mes_example") or "",
-            "creator_notes":             game.get("creator_notes") or "",
-            "system_prompt":             game.get("card_system_prompt") or "",
-            "post_history_instructions": game.get("post_history_instructions") or "",
-            "alternate_greetings":       _json_or_default(game.get("alternate_greetings"), []),
-            "character_book":            {"entries": entries},
-            "tags":                      _json_or_default(game.get("tags"), []),
-            "creator":                   game.get("creator") or "",
-            "character_version":         game.get("character_version") or "",
-            "extensions":                {"storytelling": storytelling_ext},
-        },
-    }
+    if cards:
+        export["cards"] = [
+            {
+                "type":        c["type"],
+                "name":        c["name"],
+                "description": c["description"] or "",
+                "triggers":    c["triggers"] or "",
+            }
+            for c in cards
+        ]
+
+    return export
 
 
-def _slugify(name: str) -> str:
-    slug = re.sub(r"[^a-z0-9_-]+", "-", name.strip().lower()).strip("-")
-    return slug or "imported"
+_VALID_CARD_TYPES = {"location", "npc", "item", "faction", "lore"}
 
 
 @app.post("/api/scenarios/import")
 async def import_scenario(request: Request):
-    """Import a Character Card V2 JSON document as a new scenario file."""
     body = await request.json()
 
     errors = []
-    if body.get("spec") != "chara_card_v2":
-        errors.append('"spec" must be "chara_card_v2" (V3 and other formats are not supported)')
-    data = body.get("data") or {}
-    if not data.get("name"):
-        errors.append('missing "data.name"')
-    book = data.get("character_book") or {}
-    for i, entry in enumerate(book.get("entries", [])):
-        if not isinstance(entry.get("content", ""), str) or not entry.get("content"):
-            errors.append(f'character_book.entries[{i}] missing "content"')
-        if not isinstance(entry.get("keys", []), list):
-            errors.append(f'character_book.entries[{i}] "keys" must be a list')
+    sc_id = body.get("id", "")
+    if not sc_id:
+        errors.append('missing "id"')
+    elif not re.match(r"^[a-z0-9_-]+$", sc_id):
+        errors.append('"id" must match ^[a-z0-9_-]+$')
+    if not body.get("name"):
+        errors.append('missing "name"')
+    for i, card in enumerate(body.get("cards", [])):
+        if not card.get("type"):
+            errors.append(f'card[{i}] missing "type"')
+        elif card["type"] not in _VALID_CARD_TYPES:
+            errors.append(f'card[{i}] invalid type "{card["type"]}"')
+        if not card.get("name"):
+            errors.append(f'card[{i}] missing "name"')
     if errors:
         raise HTTPException(400, f"Validation failed: {'; '.join(errors)}")
-
-    sc_id = body.get("id") or _slugify(data["name"])
-    if not re.match(r"^[a-z0-9_-]+$", sc_id):
-        sc_id = _slugify(sc_id)
-    body.pop("id", None)  # id is derived from the filename, not stored in the card
 
     scenarios_dir = os.path.join(STATIC_DIR, "scenarios")
     with open(os.path.join(scenarios_dir, f"{sc_id}.json"), "w", encoding="utf-8") as f:
@@ -400,7 +338,7 @@ async def import_scenario(request: Request):
         with open(index_path, "w", encoding="utf-8") as f:
             json.dump(index, f, ensure_ascii=False, indent=2)
 
-    return {"id": sc_id, **body}
+    return body
 
 
 # ── Summarize (business logic in modules/summarize.py) ───────────────────────

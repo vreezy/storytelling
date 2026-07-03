@@ -105,7 +105,7 @@ During a game, expand the **🔧 Debug — Last Turn** panel at the bottom to se
 - Full messages JSON sent to Ollama
 - Full Ollama request JSON
 
-The **🔧 Prompt Debug Editor** button (top-right of the game screen) lets you edit the system prompt, card description, and action prompts live — changes apply to the next turn. It also shows the card's post-history instructions and a color-coded diagram of the full prompt assembly.
+The **🔧 Prompt Debug Editor** button (top-right of the game screen) lets you edit the system prompt, scenario prompt, and action prompts live — changes apply to the next turn.
 
 ---
 
@@ -168,107 +168,48 @@ The engine is built for more batch jobs later: business logic lives in `backend/
 
 ---
 
-## Scenarios — Character Card V2
+## Scenarios
 
-Scenarios are **Character Card V2** documents (`chara_card_v2`), the standard interchange format of the AI-RP ecosystem ([spec](https://github.com/malfoyslastname/character-card-spec-v2/blob/main/spec_v2.md)). Files live in `scenarios/`, load order is controlled by `scenarios/index.json`, and the scenario **id is the filename** (not stored in the card). **V2 only — V3 cards are not supported.** Import is JSON-only for now (PNG cards: planned).
-
-### Where to find cards
-
-Thousands of community-made cards work directly in this app (download the **JSON** version and import it on the setup screen):
-
-- [Chub.ai / characterhub.org](https://chub.ai) — the largest community hub (note: large NSFW share, filter accordingly)
-- [aicharactercards.com](https://aicharactercards.com)
-- RisuRealm, JannyAI card archives
-
-Imported cards have no player-character preset (that's a StoryTelling extension) — the character form simply starts empty.
-
-### Card structure
-
-```json
-{
-  "$schema": "./schema.json",
-  "spec": "chara_card_v2",
-  "spec_version": "2.0",
-  "data": {
-    "name": "Display Name",
-    "description": "Main card content — included in every prompt.",
-    "personality": "",
-    "scenario": "",
-    "first_mes": "The first paragraph the player sees.",
-    "mes_example": "",
-    "creator_notes": "One-line pitch shown on the setup screen (UI only).",
-    "system_prompt": "World rules — appended after the global system prompt.",
-    "post_history_instructions": "",
-    "alternate_greetings": ["Alternative opening 1", "Alternative opening 2"],
-    "character_book": {
-      "entries": [
-        {
-          "keys": [],
-          "content": "Always injected (empty keys = pinned).",
-          "extensions": { "type": "location" },
-          "enabled": true,
-          "insertion_order": 0,
-          "name": "Starting Location"
-        },
-        {
-          "keys": ["keyword1", "keyword2"],
-          "content": "Only injected when a trigger keyword matches.",
-          "extensions": { "type": "npc" },
-          "enabled": true,
-          "insertion_order": 1,
-          "name": "Key NPC"
-        }
-      ]
-    },
-    "tags": [],
-    "creator": "",
-    "character_version": "1.0",
-    "extensions": {
-      "storytelling": {
-        "icon": "🌍",
-        "mainCharacters": [
-          {
-            "name": "Hero Name",
-            "class": "Role / Class",
-            "description": "Pre-filled on the setup screen."
-          }
-        ]
-      }
-    }
-  }
-}
-```
-
-Field mapping to the app:
-
-| Card field | Used as |
-|---|---|
-| `name` | Scenario title + `{{char}}` macro value |
-| `creator_notes` | Setup-screen pitch (never in the prompt) |
-| `description` | Main card content — injected into every prompt (after the system prompts); also shown in the Scenario tab |
-| `system_prompt` | Scenario system prompt (world rules) — appended **after** the global system prompt |
-| `personality` / `scenario` / `mes_example` | Injected when non-empty (`{{char}}'s personality:` / `Scenario:` / `Example dialogue:`) |
-| `first_mes` | Opening narrative (first assistant message). On a fresh game it is highlighted, freely editable, and swappable against `alternate_greetings` via dropdown |
-| `alternate_greetings` | Alternative openings — pick one before the first action; editable in the Scenario tab |
-| `post_history_instructions` | Injected as a system message **after** the chat history — the strongest instruction slot, always the last prompt part |
-| `character_book.entries` | World cards; `keys` = trigger keywords (empty = pinned), `extensions.type` = card type (`location` · `npc` · `item` · `faction` · `lore`) |
-| `extensions.storytelling` | App extension: `icon` + suggested player characters |
-
-All card fields are editable in-game in the **Scenario tab** (including tags, creator, version and the alternate greetings list). Imported community cards work out of the box — their main content in `description` is part of every prompt.
-
-### Macros
-
-`{{char}}`, `{{user}}` and `{{original}}` are replaced at prompt-build time in all card-sourced text:
-
-| Macro | Resolves to |
-|---|---|
-| `{{char}}` | The card's `name` |
-| `{{user}}` | The player character's name (fallback: "you") |
-| `{{original}}` | Replaced with an empty string — the global prompt is always included since the scenario system prompt is appended, not replacing |
+Scenarios live in `scenarios/`. Each file is a self-contained JSON document. The load order is controlled by `scenarios/index.json`.
 
 ### Adding a new scenario
 
-**1.** Create `scenarios/<your-id>.json` with the structure above.
+**1.** Create `scenarios/<your-id>.json`:
+
+```json
+{
+  "id": "your-id",
+  "name": "Display Name",
+  "icon": "🌍",
+  "description": "One-line pitch shown on the setup screen.",
+  "scenarioPrompt": "Narrator instructions specific to this world.",
+  "openingText": "The first paragraph the player sees.",
+  "mainCharacters": [
+    {
+      "name": "Hero Name",
+      "class": "Role / Class",
+      "description": "Character background pre-filled on the setup screen."
+    }
+  ],
+  "cards": [
+    {
+      "type": "location",
+      "name": "Starting Location",
+      "description": "Always injected (no triggers = pinned)."
+    },
+    {
+      "type": "npc",
+      "name": "Key NPC",
+      "description": "Only injected when a trigger keyword matches.",
+      "triggers": "keyword1, keyword2"
+    }
+  ]
+}
+```
+
+**`type`** must be one of: `location` · `npc` · `item` · `faction` · `lore`
+
+**`triggers`** — comma-separated keywords checked against the player's current action and the last 2 messages. Leave blank (or omit) to always inject the card.
 
 **2.** Register it in `scenarios/index.json`:
 
@@ -282,7 +223,11 @@ The order here is the display order on the setup screen. `custom` should stay la
 
 ### Schema
 
-`scenarios/schema.json` is a JSON Schema (Draft-07) hand-translated from the spec's TypeScript types. VS Code validates your file automatically via the `"$schema": "./schema.json"` line.
+`scenarios/schema.json` contains a JSON Schema (Draft-07) that documents all fields and their types. Any JSON-aware editor (VS Code with the JSON Language Server) will validate your file against it automatically if you add:
+
+```json
+{ "$schema": "./schema.json", "id": "your-id", ... }
+```
 
 ---
 

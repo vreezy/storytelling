@@ -1,27 +1,8 @@
 {
-  "$schema": "./schema.json",
-  "spec": "chara_card_v2",
-  "spec_version": "2.0",
-  "data": {
-    "name": "Custom World",
-    "description": "",
-    "personality": "",
-    "scenario": "",
-    "first_mes": "",
-    "mes_example": "",
-    "creator_notes": "Create your own scenario",
-    "system_prompt": "",
-    "post_history_instructions": "",
-    "alternate_greetings": [],
-    "character_book": { "entries": [] },
-    "tags": [],
-    "creator": "",
-    "character_version": "1.0",
-    "extensions": {
-      "storytelling": {
-        "icon": "✍️",
-        "mainCharacters": []
-      }
-    }
-  }
+  "id": "custom",
+  "name": "Custom World",
+  "icon": "✍️",
+  "description": "Create your own scenario",
+  "scenarioPrompt": null,
+  "openingText": null
 }

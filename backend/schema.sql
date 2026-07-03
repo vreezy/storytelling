@@ -5,7 +5,8 @@ CREATE TABLE IF NOT EXISTS games (
     description    TEXT,
     scenario_id    TEXT,
     model_id       TEXT,
-    system_prompt  TEXT,                        -- global narrator system prompt (merged, single field)
+    system_prompt  TEXT,                        -- global DM system prompt
+    custom_prompt  TEXT,                        -- custom prompt extension (writing style, etc.)
     story_summary  TEXT,                        -- rolling narrative summary of pruned turns
     summarize_enabled INTEGER NOT NULL DEFAULT 1,  -- 1 = auto-summarize pruned turns, 0 = off
     player_intent  TEXT,                        -- generated narrator instruction from player-input analysis
@@ -15,25 +16,14 @@ CREATE TABLE IF NOT EXISTS games (
     last_played_at DATETIME DEFAULT (datetime('now'))
 );
 
--- ── Scenarios (Character Card V2 data, 1:1 with games) ───────────────────────
--- Columns mirror the chara_card_v2 spec:
--- https://github.com/malfoyslastname/character-card-spec-v2/blob/main/spec_v2.md
+-- ── Scenarios (display metadata + prompts, 1:1 with games) ───────────────────
 CREATE TABLE IF NOT EXISTS scenarios (
-    game_id                   INTEGER  PRIMARY KEY REFERENCES games(id) ON DELETE CASCADE,
-    name                      TEXT     NOT NULL DEFAULT '',   -- card name ({{char}} macro value)
-    icon                      TEXT     NOT NULL DEFAULT '📖', -- app extension (extensions.storytelling.icon)
-    creator_notes             TEXT     NOT NULL DEFAULT '',   -- UI-only pitch, never in the prompt
-    description               TEXT,                           -- main card content, injected into every prompt
-    personality               TEXT,                           -- short personality summary (optional)
-    scenario                  TEXT,                           -- circumstances of the story (optional)
-    first_mes                 TEXT,                           -- opening text, first assistant message
-    mes_example               TEXT,                           -- example dialogue (optional)
-    system_prompt             TEXT,                           -- scenario system prompt, appended after the global one
-    post_history_instructions TEXT,                           -- injected after chat history
-    alternate_greetings       TEXT NOT NULL DEFAULT '[]',     -- JSON array of alternative first_mes
-    tags                      TEXT NOT NULL DEFAULT '[]',     -- JSON array of strings
-    creator                   TEXT NOT NULL DEFAULT '',
-    character_version         TEXT NOT NULL DEFAULT ''
+    game_id         INTEGER  PRIMARY KEY REFERENCES games(id) ON DELETE CASCADE,
+    name            TEXT     NOT NULL DEFAULT '',
+    icon            TEXT     NOT NULL DEFAULT '📖',
+    description     TEXT     NOT NULL DEFAULT '',
+    scenario_prompt TEXT,                       -- scenario-specific DM instructions
+    opening_text    TEXT                        -- opening text shown at game start
 );
 
 -- ── Turns (full debug data per generation) ───────────────────────────────────

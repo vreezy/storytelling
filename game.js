@@ -2,7 +2,6 @@
 
 import {
   loadConfig, initApi, showToast, pollHealth, parseDate, renderTemplate, triggerDownload,
-  applyMacros,
 } from './utils.js';
 import {
   getGame, getCharacter, getCards, putCharacter, putGame,
@@ -20,19 +19,9 @@ const state = {
   gameId:         null,
   modelId:        null,
   scenario:       null,
-  systemPrompt:   '',   // merged global narrator prompt (games.system_prompt)
-  // Character Card V2 fields (scenarios table)
-  cardDescription: '',  // data.description — UI-only scenario description, NOT in the prompt
-  cardPersonality: '',  // data.personality
-  cardScenario:    '',  // data.scenario
-  cardSystemPrompt: '', // data.system_prompt — appended after the global system prompt
-  postHistoryInstructions: '', // data.post_history_instructions — injected after history
-  mesExample:      '',  // data.mes_example
-  cardFirstMes:    '',  // data.first_mes — raw (macros applied at display time)
-  cardAlternateGreetings: [], // data.alternate_greetings
-  cardTags:        [],  // data.tags
-  cardCreator:     '',
-  cardCharacterVersion: '',
+  systemPrompt:   '',   // global DM prompt (games.system_prompt)
+  scenarioPrompt: '',   // scenario-specific DM instructions (games.scenario_prompt)
+  customPrompt:   '',   // custom prompt extension (games.custom_prompt)
   character:      { name: '', description: '', class: '', stats: null, notes: '' },
   cards:          [],
   messages:       [],
@@ -83,30 +72,14 @@ $(async function () {
 });
 
 // ── Load game from DB ─────────────────────────────────────────────────────────
-function parseJsonArray(text) {
-  try {
-    const v = typeof text === 'string' ? JSON.parse(text) : text;
-    return Array.isArray(v) ? v : [];
-  } catch { return []; }
-}
-
 async function loadGame(id) {
   const game = await getGame(id);
 
   state.gameId          = game.id;
   state.modelId         = game.model_id;
   state.systemPrompt    = game.system_prompt || '';
-  state.cardDescription = game.card_description || '';
-  state.cardPersonality = game.personality || '';
-  state.cardScenario    = game.scenario || '';
-  state.cardSystemPrompt = game.card_system_prompt || '';
-  state.postHistoryInstructions = game.post_history_instructions || '';
-  state.mesExample      = game.mes_example || '';
-  state.cardFirstMes    = game.first_mes || '';
-  state.cardAlternateGreetings = parseJsonArray(game.alternate_greetings);
-  state.cardTags        = parseJsonArray(game.tags);
-  state.cardCreator     = game.creator || '';
-  state.cardCharacterVersion = game.character_version || '';
+  state.scenarioPrompt  = game.scenario_prompt || '';
+  state.customPrompt    = game.custom_prompt || '';
   state.storySummary    = game.story_summary || '';
   state.summarizeEnabled = game.summarize_enabled !== 0;
   state.pendingSummary  = [];
@@ -133,20 +106,19 @@ async function loadGame(id) {
     id:          game.scenario_id,
     name:        game.scenario_name || game.title,
     icon:        game.scenario_icon || '',
-    description: game.creator_notes || '',
+    description: game.scenario_description || '',
   };
   $('#scenario-title').text(`${state.scenario.icon} ${state.scenario.name}`.trim());
-  renderScenarioTab();
+  $('#scenario-icon-edit').val(state.scenario.icon);
+  $('#scenario-name-edit').val(state.scenario.name);
+  $('#scenario-desc-edit').val(state.scenario.description);
   $('#story-text').empty();
   state.segments = [];
 
-  const isFresh = (game.turns || []).length === 0;
-  if (game.first_mes) {
-    const opening = applyMacros(game.first_mes, macroContext());
-    appendSegment(opening + '\n\n', isFresh ? 'narrative opening-fresh' : 'narrative', 'game', 'first_mes');
-    state.messages.push({ role: 'assistant', content: opening });
+  if (game.opening_text) {
+    appendSegment(game.opening_text + '\n\n', 'narrative', 'game', 'opening_text');
+    state.messages.push({ role: 'assistant', content: game.opening_text });
   }
-  renderOpeningPicker(isFresh && !!game.first_mes);
 
   for (const t of game.turns) {
     if (t.raw_input) {
@@ -172,7 +144,9 @@ async function loadGame(id) {
   $('#num-predict-reset').toggleClass('d-none', state.numPredict === 200);
   $('#summarize-toggle').prop('checked', state.summarizeEnabled);
   $('#player-intent-toggle').prop('checked', state.playerIntentEnabled);
+  $('#scenario-prompt-edit').val(state.scenarioPrompt);
   $('#plot-prompt-edit').val(state.systemPrompt);
+  $('#custom-prompt-edit').val(state.customPrompt);
 
   // Restore sidebar width (default 500px set in HTML)
   const savedW = localStorage.getItem('sidebar_width');
@@ -207,7 +181,6 @@ async function continueStory() {
 // ── Generate continuation ─────────────────────────────────────────────────────
 async function generateContinuation(actionText, actionType) {
   state.generating = true;
-  clearFreshOpening();
   $('#send-btn, #undo-btn, #retry-btn, #continue-btn, #describe-btn').prop('disabled', true);
 
   const isContinue = actionText === null;
@@ -394,22 +367,7 @@ function trimToLastSentence(text) {
 }
 
 // ── Message builder (shared by generateContinuation & debug preview) ──────────
-// Card V2 macro context: {{char}} = card name, {{user}} = player character.
-function macroContext() {
-  return {
-    charName: state.scenario?.name || '',
-    userName: state.character?.name || '',
-  };
-}
-
-// Assembles the prompt per Character Card V2 semantics:
-// global system prompt → scenario system prompt (card) → description →
-// personality → scenario → protagonist → world cards → summary → intent →
-// action prompt → example dialogue → story opening;
-// post_history_instructions goes AFTER the chat history as the final
-// system message.
 function buildMessages(actionType, playerLine) {
-  const mc           = macroContext();
   const charCtx      = buildCharacterContext();
   const actionPrompt = actionType === 'continue'
     ? ''
@@ -417,19 +375,15 @@ function buildMessages(actionType, playerLine) {
   const continueMsg = actionType === 'continue'
     ? (state.config.actionPrompts?.continue || 'Continue.') : null;
   const cardsCtx     = buildCardsContext(playerLine || '');
-
   let sysContent = [
     state.systemPrompt,
-    state.cardSystemPrompt ? applyMacros(state.cardSystemPrompt, mc) : '',
-    state.cardDescription ? applyMacros(state.cardDescription, mc) : '',
-    state.cardPersonality ? applyMacros(`{{char}}'s personality: ${state.cardPersonality}`, mc) : '',
-    state.cardScenario ? `Scenario: ${applyMacros(state.cardScenario, mc)}` : '',
+    state.scenarioPrompt,
+    state.customPrompt,
     charCtx,
-    applyMacros(cardsCtx, mc),
+    cardsCtx,
     state.storySummary ? `Story so far: ${state.storySummary}` : '',
     state.playerIntent,
     actionPrompt,
-    state.mesExample ? `Example dialogue:\n${applyMacros(state.mesExample, mc)}` : '',
   ].filter(Boolean).join('\n\n');
 
   let history = [...state.messages];
@@ -447,10 +401,6 @@ function buildMessages(actionType, playerLine) {
     msgs.push({ role: 'user', content: playerLine });
   } else if (continueMsg) {
     msgs.push({ role: 'user', content: continueMsg });
-  }
-
-  if (state.postHistoryInstructions) {
-    msgs.push({ role: 'system', content: applyMacros(state.postHistoryInstructions, mc) });
   }
 
   return msgs;
@@ -475,57 +425,6 @@ async function retry() {
   if (!state.lastAction || state.generating) return;
   await undo();
   await generateContinuation(state.lastAction.text, state.lastAction.type);
-}
-
-// ── Opening picker (fresh games only) ─────────────────────────────────────────
-// Until the first turn is played, the opening text (first_mes) is highlighted,
-// freely editable (click it), and can be swapped against alternate_greetings.
-function renderOpeningPicker(show) {
-  const $panel = $('#opening-picker');
-  if (!$panel.length) return;
-  if (!show) { $panel.addClass('d-none'); return; }
-
-  const $sel = $('#opening-select').empty();
-  $sel.append(new Option('Current opening', '-1'));
-  state.cardAlternateGreetings.forEach((g, i) => {
-    const preview = String(g).replace(/\s+/g, ' ').slice(0, 70);
-    $sel.append(new Option(`Alternative ${i + 1} — ${preview}…`, String(i)));
-  });
-  $sel.val('-1').prop('disabled', state.cardAlternateGreetings.length === 0);
-  $panel.removeClass('d-none');
-}
-
-// Swap first_mes with the chosen alternate greeting — nothing gets lost,
-// the previous opening takes the alternate's place in the list.
-async function swapOpening(altIndex) {
-  const alts   = [...state.cardAlternateGreetings];
-  const chosen = alts[altIndex];
-  if (chosen == null) return;
-  alts[altIndex] = state.cardFirstMes;
-  try {
-    await putGame(state.gameId, { first_mes: chosen, alternate_greetings: alts });
-  } catch {
-    showToast('Failed to save opening.', 'danger');
-    return;
-  }
-  state.cardFirstMes = chosen;
-  state.cardAlternateGreetings = alts;
-  const opening = applyMacros(chosen, macroContext());
-  state.segments[0] = { ...state.segments[0], text: opening + '\n\n' };
-  state.messages[0] = { role: 'assistant', content: opening };
-  rebuildStoryDisplay();
-  renderOpeningPicker(true);
-  renderScenarioTab();
-  showToast('Opening swapped.', 'success');
-}
-
-// Called when the first action is sent — the game is no longer "fresh".
-function clearFreshOpening() {
-  $('#opening-picker').addClass('d-none');
-  if (state.segments[0]?.cssClass?.includes('opening-fresh')) {
-    state.segments[0].cssClass = 'narrative';
-    $('#story-text span').first().removeClass('opening-fresh');
-  }
 }
 
 // ── Story display ─────────────────────────────────────────────────────────────
@@ -572,7 +471,7 @@ function attachSegmentEdit($span, idx) {
         // Persist to DB
         const seg = state.segments[idx];
         if (seg.turnId === 'game') {
-          putGame(state.gameId, { first_mes: newText.trimEnd() })
+          putGame(state.gameId, { opening_text: newText.trimEnd() })
             .then(() => showToast('Saved.', 'success'))
             .catch(() => showToast('Failed to save.', 'danger'));
         } else if (seg.turnId) {
@@ -651,8 +550,8 @@ function updateDebugPanel(doneMsg, messages, params) {
 function refreshDebugTab() {
   const ap = state.config.actionPrompts || {};
   $('#debug-global-prompt').val(state.systemPrompt || '');
-  $('#debug-scenario-prompt').val(state.cardSystemPrompt || '');
-  $('#debug-phi').val(state.postHistoryInstructions || '');
+  $('#debug-scenario-prompt').val(state.scenarioPrompt || '');
+  $('#debug-custom-prompt').val(state.customPrompt || '');
   $('#debug-char-context').val(buildCharacterContext());
   $('#debug-action-do').val(ap.do || '');
   $('#debug-action-say').val(ap.say || '');
@@ -671,9 +570,7 @@ function updateDebugCombined() {
   const parts = [
     $('#debug-global-prompt').val(),
     $('#debug-scenario-prompt').val(),
-    state.cardDescription || '',
-    state.cardPersonality ? `{{char}}'s personality: ${state.cardPersonality}` : '',
-    state.cardScenario ? `Scenario: ${state.cardScenario}` : '',
+    state.customPrompt || '',
     $('#debug-char-context').val(),
     state.playerIntent || '',
     ap[activeAction] || '',
@@ -686,12 +583,12 @@ function buildNextPromptPreview() {
   const actionType = $('#action-type').val() || 'do';
   const playerLine = buildPlayerActionText(actionText, actionType);
 
-  const origSystem  = state.systemPrompt;
-  const origCardSys = state.cardSystemPrompt;
-  const origAp      = { ...state.config.actionPrompts };
+  const origSystem   = state.systemPrompt;
+  const origScenario = state.scenarioPrompt;
+  const origAp       = { ...state.config.actionPrompts };
 
-  state.systemPrompt     = $('#debug-global-prompt').val();
-  state.cardSystemPrompt = $('#debug-scenario-prompt').val();
+  state.systemPrompt   = $('#debug-global-prompt').val();
+  state.scenarioPrompt = $('#debug-scenario-prompt').val();
   state.config.actionPrompts = {
     do:    $('#debug-action-do').val(),
     say:   $('#debug-action-say').val(),
@@ -700,8 +597,8 @@ function buildNextPromptPreview() {
 
   const messages = buildMessages(actionType, playerLine);
 
-  state.systemPrompt     = origSystem;
-  state.cardSystemPrompt = origCardSys;
+  state.systemPrompt   = origSystem;
+  state.scenarioPrompt = origScenario;
   state.config.actionPrompts = origAp;
 
   $('#debug-next-prompt').val(JSON.stringify(messages, null, 2));
@@ -734,16 +631,13 @@ function renderPromptDiagram() {
 
   const sysSources = [
     { label: 'Global System Prompt',          color: '#4a9eff', value: $('#debug-global-prompt').val() },
-    { label: 'Scenario System Prompt',        color: '#51cf66', value: $('#debug-scenario-prompt').val() },
-    { label: 'Card Description',              color: '#a3e635', value: state.cardDescription || '' },
-    { label: 'Personality',                   color: '#22d3ee', value: state.cardPersonality ? `{{char}}'s personality: ${state.cardPersonality}` : '' },
-    { label: 'Scenario',                      color: '#2dd4bf', value: state.cardScenario ? `Scenario: ${state.cardScenario}` : '' },
+    { label: 'Scenario Prompt',               color: '#51cf66', value: $('#debug-scenario-prompt').val() },
+    { label: 'Custom Extension',              color: '#22d3ee', value: state.customPrompt || '' },
     { label: 'Character Context',             color: '#fbbf24', value: buildCharacterContext() },
     { label: 'World Cards',                   color: '#f97316', value: buildCardsContext(playerLine) },
     { label: 'Story Summary',                 color: '#a78bfa', value: state.storySummary ? `Story so far: ${state.storySummary}` : '' },
     { label: 'Player Intent',                 color: '#ec4899', value: state.playerIntent || '' },
     { label: `Action Prompt (${actionType})`, color: '#f87171', value: ['do','say','story'].includes(actionType) ? ($('#debug-action-' + actionType).val() || '') : '' },
-    { label: 'Example Dialogue',              color: '#94a3b8', value: state.mesExample ? `Example dialogue:\n${state.mesExample}` : '' },
   ];
 
   function srcBlock(s) {
@@ -793,18 +687,7 @@ function renderPromptDiagram() {
     `<span class="debug-src-stats">${fmtStats(actionStats)}</span>` +
     `<pre class="debug-src-pre">${escHtml(playerLine)}</pre></div>`;
 
-  // Post-history instructions — always shown as the last prompt block
-  const phi      = state.postHistoryInstructions || '';
-  const phiStats = phi ? textStats(phi) : zeroStats;
-  html += `<div class="debug-pipeline-sep">↓ Post-History Instructions` +
-    (phi ? `<span class="debug-sep-stats">${fmtStats(phiStats)}</span>` : '') +
-    `</div>`;
-  html += `<div class="debug-src-block${phi ? '' : ' debug-src-empty'}" style="border-left-color:#e879f9">` +
-    `<span class="debug-src-label" style="color:#e879f9">card → system message (after history)</span>` +
-    (phi ? `<span class="debug-src-stats">${fmtStats(phiStats)}</span>` : '') +
-    `<pre class="debug-src-pre">${escHtml(phi || '(empty)')}</pre></div>`;
-
-  const grandTotal = addStats(addStats(addStats(sysTotal, histTotal), actionStats), phiStats);
+  const grandTotal = addStats(addStats(sysTotal, histTotal), actionStats);
   html += `<div class="debug-pipeline-total">` +
     `<span class="debug-total-label">Total next prompt</span>` +
     `<span class="debug-total-stats">${fmtStats(grandTotal)}</span>` +
@@ -858,93 +741,6 @@ function buildCardsContext(playerLine = '') {
     `[${c.type.toUpperCase()}] ${c.name}${c.description ? ': ' + c.description : ''}`
   );
   return 'World context:\n' + lines.join('\n');
-}
-
-// ── Scenario tab (full Character Card V2 editor) ──────────────────────────────
-function renderScenarioTab() {
-  $('#scenario-icon-edit').val(state.scenario.icon);
-  $('#scenario-name-edit').val(state.scenario.name);
-  $('#scenario-desc-edit').val(state.scenario.description);          // creator_notes
-  $('#scenario-description-edit').val(state.cardDescription);
-  $('#scenario-personality-edit').val(state.cardPersonality);
-  $('#scenario-scenario-edit').val(state.cardScenario);
-  $('#scenario-first-mes-edit').val(state.cardFirstMes);
-  $('#scenario-mes-example-edit').val(state.mesExample);
-  $('#scenario-prompt-edit').val(state.cardSystemPrompt);
-  $('#scenario-phi-edit').val(state.postHistoryInstructions);
-  $('#scenario-tags-edit').val(state.cardTags.join(', '));
-  $('#scenario-creator-edit').val(state.cardCreator);
-  $('#scenario-version-edit').val(state.cardCharacterVersion);
-
-  const $list = $('#alt-greetings-list').empty();
-  state.cardAlternateGreetings.forEach(g => $list.append(buildAltGreetingEl(g)));
-}
-
-function buildAltGreetingEl(text) {
-  const $el = $(`
-    <div class="d-flex gap-1 mb-2 alt-greeting-item">
-      <textarea class="form-control form-control-sm alt-greeting-text" rows="3"></textarea>
-      <button class="btn btn-sm btn-outline-danger align-self-start alt-greeting-del" title="Remove">✕</button>
-    </div>
-  `);
-  $el.find('.alt-greeting-text').val(text).on('blur', saveScenario);
-  $el.find('.alt-greeting-del').on('click', function () { $(this).closest('.alt-greeting-item').remove(); });
-  return $el;
-}
-
-function collectAltGreetings() {
-  return $('#alt-greetings-list .alt-greeting-text').map(function () {
-    return $(this).val().trim();
-  }).get().filter(Boolean);
-}
-
-async function saveScenario() {
-  const payload = {
-    scenario_name:             $('#scenario-name-edit').val().trim(),
-    scenario_icon:             $('#scenario-icon-edit').val().trim(),
-    creator_notes:             $('#scenario-desc-edit').val().trim(),
-    card_description:          $('#scenario-description-edit').val(),
-    personality:               $('#scenario-personality-edit').val(),
-    scenario:                  $('#scenario-scenario-edit').val(),
-    first_mes:                 $('#scenario-first-mes-edit').val(),
-    mes_example:               $('#scenario-mes-example-edit').val(),
-    card_system_prompt:        $('#scenario-prompt-edit').val(),
-    post_history_instructions: $('#scenario-phi-edit').val(),
-    alternate_greetings:       collectAltGreetings(),
-    tags:                      $('#scenario-tags-edit').val().split(',').map(t => t.trim()).filter(Boolean),
-    creator:                   $('#scenario-creator-edit').val().trim(),
-    character_version:         $('#scenario-version-edit').val().trim(),
-  };
-  try {
-    await putGame(state.gameId, payload);
-    const firstMesChanged = payload.first_mes !== state.cardFirstMes;
-    state.scenario.name  = payload.scenario_name || state.scenario.name;
-    state.scenario.icon  = payload.scenario_icon || state.scenario.icon;
-    state.scenario.description = payload.creator_notes;
-    state.cardDescription = payload.card_description;
-    state.cardPersonality = payload.personality;
-    state.cardScenario    = payload.scenario;
-    state.cardFirstMes    = payload.first_mes;
-    state.mesExample      = payload.mes_example;
-    state.cardSystemPrompt = payload.card_system_prompt;
-    state.postHistoryInstructions = payload.post_history_instructions;
-    state.cardAlternateGreetings = payload.alternate_greetings;
-    state.cardTags        = payload.tags;
-    state.cardCreator     = payload.creator;
-    state.cardCharacterVersion = payload.character_version;
-    $('#scenario-title').text(`${state.scenario.icon} ${state.scenario.name}`.trim());
-    if (firstMesChanged && state.segments[0]?.field === 'first_mes'
-        && state.segments[0]?.cssClass?.includes('opening-fresh')) {
-      const opening = applyMacros(payload.first_mes, macroContext());
-      state.segments[0] = { ...state.segments[0], text: opening + '\n\n' };
-      state.messages[0] = { role: 'assistant', content: opening };
-      rebuildStoryDisplay();
-    }
-    renderOpeningPicker(!$('#opening-picker').hasClass('d-none'));
-    showToast('Scenario saved.', 'success');
-  } catch {
-    showToast('Failed to save scenario.', 'danger');
-  }
 }
 
 // ── Character sidebar ─────────────────────────────────────────────────────────
@@ -1167,45 +963,52 @@ function bindEvents() {
       });
   });
 
-  // Scenario tab: autosave on blur
-  $('#scenario-icon-edit, #scenario-name-edit, #scenario-desc-edit, ' +
-    '#scenario-description-edit, #scenario-personality-edit, #scenario-scenario-edit, ' +
-    '#scenario-first-mes-edit, #scenario-mes-example-edit, #scenario-prompt-edit, ' +
-    '#scenario-phi-edit, #scenario-tags-edit, #scenario-creator-edit, #scenario-version-edit')
-    .on('blur', saveScenario);
-
-  // Scenario tab: add an alternate greeting
-  $('#alt-greeting-add').on('click', () => {
-    $('#alt-greetings-list').append(buildAltGreetingEl(''));
-    $('#alt-greetings-list .alt-greeting-text').last().trigger('focus');
+  // Scenario tab: scenario-specific DM prompt + display metadata
+  $('#scenario-save-btn').on('click', async () => {
+    const text = $('#scenario-prompt-edit').val();
+    const name = $('#scenario-name-edit').val().trim();
+    const icon = $('#scenario-icon-edit').val().trim();
+    const desc = $('#scenario-desc-edit').val().trim();
+    try {
+      await putGame(state.gameId, {
+        scenario_prompt:      text,
+        scenario_name:        name,
+        scenario_icon:        icon,
+        scenario_description: desc,
+      });
+      state.scenarioPrompt = text;
+      state.scenario.name  = name || state.scenario.name;
+      state.scenario.icon  = icon || state.scenario.icon;
+      state.scenario.description = desc;
+      $('#scenario-title').text(`${state.scenario.icon} ${state.scenario.name}`.trim());
+      showToast('Scenario saved.', 'success');
+    } catch {
+      showToast('Failed to save scenario.', 'danger');
+    }
   });
 
-  // Fresh-game opening: swap in an alternate greeting
-  $('#opening-select').on('change', function () {
-    const idx = parseInt($(this).val(), 10);
-    if (idx >= 0) swapOpening(idx);
-  });
-
-  // Scenario tab: export as Character Card V2 JSON
+  // Scenario tab: export
   $('#scenario-export-btn').on('click', async () => {
     try {
-      const card = await getGameScenario(state.gameId);
-      triggerDownload(JSON.stringify(card, null, 2), `${state.scenario?.id || 'card-' + state.gameId}.json`);
+      const scenario = await getGameScenario(state.gameId);
+      triggerDownload(JSON.stringify(scenario, null, 2), `${scenario.id || state.gameId}.json`);
       showToast('Scenario exported.', 'success');
     } catch (err) {
       showToast(`Export failed: ${err.message}`, 'danger');
     }
   });
 
-  // Plot tab: merged global system prompt
+  // Plot tab: system prompt + custom prompt
   $('#plot-save-btn').on('click', async () => {
-    const sysText = $('#plot-prompt-edit').val();
+    const sysText    = $('#plot-prompt-edit').val();
+    const customText = $('#custom-prompt-edit').val();
     try {
-      await putGame(state.gameId, { system_prompt: sysText });
+      await putGame(state.gameId, { system_prompt: sysText, custom_prompt: customText });
       state.systemPrompt = sysText;
-      showToast('Prompt saved.', 'success');
+      state.customPrompt = customText;
+      showToast('Prompts saved.', 'success');
     } catch {
-      showToast('Failed to save prompt.', 'danger');
+      showToast('Failed to save prompts.', 'danger');
     }
   });
 
@@ -1247,7 +1050,7 @@ function bindEvents() {
     state.systemPrompt = $(this).val(); updateDebugCombined(); buildNextPromptPreview();
   });
   $('#debug-scenario-prompt').on('input', function () {
-    state.cardSystemPrompt = $(this).val(); updateDebugCombined(); buildNextPromptPreview();
+    state.scenarioPrompt = $(this).val(); updateDebugCombined(); buildNextPromptPreview();
   });
   $('#debug-action-do').on('input', function () {
     state.config.actionPrompts.do = $(this).val(); updateDebugCombined(); buildNextPromptPreview();
