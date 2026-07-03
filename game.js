@@ -112,6 +112,8 @@ async function loadGame(id) {
   $('#scenario-icon-edit').val(state.scenario.icon);
   $('#scenario-name-edit').val(state.scenario.name);
   $('#scenario-desc-edit').val(state.scenario.description);
+  state.openingText = game.opening_text || '';
+  $('#scenario-opening-edit').val(state.openingText);
   $('#story-text').empty();
   state.segments = [];
 
@@ -411,8 +413,18 @@ async function undo() {
   if (state.generating || !state.gameId) return;
   try { await undoTurn(state.gameId); } catch { /* ignore */ }
 
-  state.segments = state.segments.slice(0, -2);
-  if (state.messages.length >= 2) state.messages = state.messages.slice(0, -2);
+  // Remove exactly the segments of the last turn — the single turn the backend
+  // just deleted. An action turn has a player + response span sharing one
+  // turnId; a continue turn has only the response span. Segment count and
+  // message count per turn match, so remove the same number of each.
+  const segs = state.segments;
+  if (segs.length) {
+    const lastTurnId = segs[segs.length - 1].turnId;
+    let n = 1;
+    while (n < segs.length && segs[segs.length - 1 - n].turnId === lastTurnId) n++;
+    state.segments = segs.slice(0, -n);
+    state.messages = state.messages.slice(0, -Math.min(n, state.messages.length));
+  }
 
   rebuildStoryDisplay();
   updateContextBar();
@@ -506,6 +518,21 @@ function attachSegmentEdit($span, idx) {
     $ta[0].style.height = $ta[0].scrollHeight + 'px';
     $ta.focus();
   });
+}
+
+// Keep the story display's opening segment in sync when opening_text is edited
+// from the Scenario tab (mirrors the inline-edit path in attachSegmentEdit).
+function syncOpeningSegment(openingText) {
+  const idx = state.segments.findIndex(s => s.turnId === 'game' && s.field === 'opening_text');
+  if (openingText.trim()) {
+    const segText = openingText.trimEnd() + '\n\n';
+    if (idx >= 0) state.segments[idx].text = segText;
+    else state.segments.unshift({ text: segText, cssClass: 'narrative', turnId: 'game', field: 'opening_text' });
+  } else if (idx >= 0) {
+    state.segments.splice(idx, 1);
+  }
+  rebuildStoryDisplay();
+  rebuildMessagesFromSegments();
 }
 
 function rebuildMessagesFromSegments() {
@@ -965,22 +992,26 @@ function bindEvents() {
 
   // Scenario tab: scenario-specific DM prompt + display metadata
   $('#scenario-save-btn').on('click', async () => {
-    const text = $('#scenario-prompt-edit').val();
-    const name = $('#scenario-name-edit').val().trim();
-    const icon = $('#scenario-icon-edit').val().trim();
-    const desc = $('#scenario-desc-edit').val().trim();
+    const text    = $('#scenario-prompt-edit').val();
+    const name    = $('#scenario-name-edit').val().trim();
+    const icon    = $('#scenario-icon-edit').val().trim();
+    const desc    = $('#scenario-desc-edit').val().trim();
+    const opening = $('#scenario-opening-edit').val();
     try {
       await putGame(state.gameId, {
         scenario_prompt:      text,
         scenario_name:        name,
         scenario_icon:        icon,
         scenario_description: desc,
+        opening_text:         opening.trimEnd(),
       });
       state.scenarioPrompt = text;
       state.scenario.name  = name || state.scenario.name;
       state.scenario.icon  = icon || state.scenario.icon;
       state.scenario.description = desc;
+      state.openingText    = opening;
       $('#scenario-title').text(`${state.scenario.icon} ${state.scenario.name}`.trim());
+      syncOpeningSegment(opening);
       showToast('Scenario saved.', 'success');
     } catch {
       showToast('Failed to save scenario.', 'danger');

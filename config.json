@@ -95,7 +95,54 @@
       "parameters": "8B",
       "description": "Meta Llama 3.1 8B with refusal vectors removed (abliteration). No content filters whatsoever — use responsibly.",
       "link": "https://ollama.com/mannix/llama3.1-8b-abliterated"
+    },
+    {
+      "id": "gemma4:12b",
+      "name": "Gemma 4 12B",
+      "sizeMb": 8100,
+      "nsfw": false,
+      "parameters": "12B",
+      "description": "Google Gemma 4 at 12B — strong general reasoning and instruction following. Larger context and vocabulary than the 8B-class models, at higher memory cost.",
+      "link": "https://ollama.com/library/gemma4"
+    },
+    {
+      "id": "qwen3.5:9b",
+      "name": "Qwen 3.5 9B",
+      "sizeMb": 5500,
+      "nsfw": false,
+      "parameters": "9B",
+      "description": "Alibaba Qwen 3.5 9B — capable multilingual all-rounder with solid narrative coherence and instruction following.",
+      "link": "https://ollama.com/library/qwen3.5"
+    },
+    {
+      "id": "mikemikeok/Qwythos-9B-Uncensored:latest",
+      "name": "Qwythos 9B Uncensored",
+      "sizeMb": 5500,
+      "nsfw": true,
+      "parameters": "9B",
+      "description": "Uncensored 9B fine-tune tuned for unrestricted roleplay and creative fiction. Few guardrails — use responsibly.",
+      "link": "https://ollama.com/mikemikeok/Qwythos-9B-Uncensored"
+    },
+    {
+      "id": "igorls/gemma-4-12B-it-qat-q4_0-unquantized-heretic:latest",
+      "name": "Gemma 4 12B Heretic (QAT)",
+      "sizeMb": 8100,
+      "nsfw": true,
+      "parameters": "12B",
+      "description": "Gemma 4 12B instruction-tuned, QAT q4_0, ",
+      "link": "https://ollama.com/igorls/gemma-4-12B-it-qat-q4_0-unquantized-heretic"
+    },
+    {
+      "id": "jimscard/new-adult-writer:latest",
+      "name": "new adult writer",
+      "sizeMb": 9600,
+      "nsfw": true,
+      "parameters": "12B",
+      "description": "nsfw - adult writer",
+      "link": "https://ollama.com/jimscard/new-adult-writer"
     }
+
+    
   ],
   "systemPrompt": "You are a narrator for an interactive story. Respond directly to the player's last action. Write exactly one short paragraph (3–4 sentences) in second person, present tense. End on a complete sentence. No meta-commentary, no questions directed at the player, no game mechanics text.",
   "customSystemPrompt": "Lead with the immediate consequence of the player's action. Show the world and characters reacting — make reactions visible, not atmospheric. Dialogue is natural and distinct per character; break grammar rules to express individual voices. Every sentence earns its place. React to what the player did — never advance the plot independently. One small step forward at a time, never multiple story beats at once.",
