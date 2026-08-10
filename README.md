@@ -8,7 +8,7 @@ Text adventure game powered by local AI via Ollama. No cloud, no CDN at runtime.
 
 ```
 Browser → http://localhost:8000/         FastAPI (Podman) — serves UI + REST API
-FastAPI  → http://localhost:11434        Ollama for Windows (native, GPU accelerated)
+FastAPI  → http://localhost:11434        Ollama on the host (native, GPU accelerated)
 FastAPI  → /data/dungeon.db             SQLite (Podman named volume, persists between restarts)
 ```
 
@@ -18,8 +18,64 @@ FastAPI  → /data/dungeon.db             SQLite (Podman named volume, persists 
 
 | Tool | Purpose |
 |---|---|
-| [Podman Desktop](https://podman.io/) | Runs the FastAPI backend container |
-| [Ollama for Windows](https://ollama.com/download) | Runs AI models (GPU accelerated) |
+| [Podman](https://podman.io/) (Desktop on Windows/macOS, `podman` + `podman-compose` on Linux) | Runs the FastAPI backend container |
+| [Ollama](https://ollama.com/download) | Runs AI models (GPU accelerated) |
+
+### `podman compose` vs. `podman-compose`
+
+Both work — every command in this README is given in both forms. They are two different frontends for the same `compose.yml`:
+
+- **`podman compose`** — the subcommand built into Podman. It delegates to an external provider (`podman-compose` or `docker-compose`), so it only works if one of them is installed.
+- **`podman-compose`** — the standalone Python tool. On Fedora: `sudo dnf install podman-compose`.
+
+If `podman compose` prints *"no compose provider found"*, use `podman-compose` directly.
+
+---
+
+## Linux / Fedora setup
+
+Two things differ from Windows. Both are already handled in `compose.yml`, except the Ollama bind address, which you must set on the host.
+
+### 1. SELinux — bind mounts need the `:z` label
+
+On Fedora/RHEL, SELinux blocks a container from reading files on a bind mount unless they carry a container label. Symptom:
+
+```
+sh: 0: cannot open /app/backend/start.sh: Permission denied
+```
+
+`compose.yml` already appends `:z` to every bind mount (`- .:/app:z`), which makes Podman relabel the project directory on start. The flag is silently ignored on Windows, macOS, and non-SELinux Linux, so the same file works everywhere. **No action needed.**
+
+### 2. Ollama must listen on `0.0.0.0`
+
+By default Ollama only binds `127.0.0.1`, which containers cannot reach — the connection badge stays red and `/api/health` reports `"ollama": "error"`. Make Ollama listen on all interfaces:
+
+```bash
+sudo systemctl edit ollama.service
+```
+
+Add:
+
+```ini
+[Service]
+Environment="OLLAMA_HOST=0.0.0.0"
+```
+
+Then:
+
+```bash
+sudo systemctl restart ollama
+```
+
+Verify it now listens on all interfaces (`*:11434` instead of `127.0.0.1:11434`):
+
+```bash
+ss -tlnp | grep 11434
+```
+
+If you start Ollama by hand instead of via systemd, run it as `OLLAMA_HOST=0.0.0.0 ollama serve`.
+
+> Podman's own firewalld zone allows traffic from the container network to the host, so no extra firewall rule is needed on Fedora.
 
 ---
 
@@ -27,19 +83,29 @@ FastAPI  → /data/dungeon.db             SQLite (Podman named volume, persists 
 
 ### 1. Download frontend libraries (Bootstrap, jQuery)
 
-```powershell
-podman compose run --rm downloader
+```bash
+podman compose run --rm downloader --libs-only
+# or
+podman-compose run --rm downloader --libs-only
 ```
 
 This downloads `libs/bootstrap.min.css`, `libs/bootstrap.bundle.min.js`, and `libs/jquery.min.js`.
 
+Omitting `--libs-only` also fetches the ONNX models into `models/` (large download — only needed for in-browser inference).
+
+> This step is optional: the backend runs the same libs download automatically on every start.
+
 ### 2. Start the backend
 
-Make sure **Ollama for Windows is running** first (system tray icon or `ollama serve` in a terminal).
+Make sure **Ollama is running** first (Windows: system tray icon; Linux: `systemctl status ollama`, and see *Linux / Fedora setup* above).
 
-```powershell
+```bash
 podman compose up backend
+# or
+podman-compose up backend
 ```
+
+Add `-d` to run it in the background.
 
 ### 3. Open in browser
 
@@ -89,11 +155,13 @@ Click **Load Game** at any time. Games are listed newest-first. Click a row to r
 
 ## Stopping
 
-```powershell
+```bash
 podman compose down
+# or
+podman-compose down
 ```
 
-Ollama keeps running in the system tray. Close it separately if needed.
+Ollama keeps running (system tray on Windows, `ollama.service` on Linux). Stop it separately if needed.
 
 ---
 
@@ -115,8 +183,10 @@ The `tester` service plays 30 scripted turns automatically and writes a Markdown
 
 **Start the backend first, then run:**
 
-```powershell
+```bash
 podman compose run --rm tester
+# or
+podman-compose run --rm tester
 ```
 
 The report appears in `tests/reports/analysis_YYYYMMDD_HHMMSS.md` on the host.
@@ -154,8 +224,10 @@ To add a run for a new scenario, copy an existing config and edit the `scenario_
 
 The game can condense old story messages into a rolling "Story so far" summary live during play (switch in the **Model** tab of the game sidebar). On low-power systems this extra generation per turn is unwelcome — turn the switch **off**, play your session, then run the offline workflow and leave the computer:
 
-```powershell
+```bash
 podman compose run --rm workflow
+# or
+podman-compose run --rm workflow
 ```
 
 The workflow engine (`backend/workflow.py`) iterates **all games** and regenerates each story summary **from scratch**: it rebuilds the full message history from the turns, takes everything that has fallen out of the context window (`contextMaxMessages` in `config.json`), and folds it chunk by chunk (`summarizeAfterMessages` per chunk) into a fresh summary via Ollama. Re-running is always safe — the result simply replaces the previous summary.
@@ -250,6 +322,7 @@ aidungeon/
 ├── utils.js              # Shared helpers (loadConfig, showToast, …)
 ├── style.css             # Shared styles
 ├── config.json           # Global settings, model list, generation parameters
+├── download.py           # Fetches frontend libs (+ ONNX models) — run via the downloader service
 ├── scenarios/
 │   ├── index.json        # Load order — lists all scenario IDs
 │   ├── schema.json       # JSON Schema for scenario files (validation / editor hints)
@@ -259,7 +332,7 @@ aidungeon/
 │   ├── zootopia.json
 │   ├── overlord.json
 │   └── custom.json
-├── compose.yml           # Podman Compose
+├── compose.yml           # Podman Compose (downloader / backend / workflow / tester)
 ├── backend/
 │   ├── main.py           # FastAPI application (all routes)
 │   ├── migrations.py     # DB connection + idempotent schema migrations
@@ -279,13 +352,34 @@ aidungeon/
 
 ## Troubleshooting
 
-**Connection badge is red**
-→ Make sure Ollama for Windows is running. Then check `podman compose up backend`.
-→ Verify Ollama is reachable: `curl http://localhost:11434/api/tags`
+**`cannot open /app/backend/start.sh: Permission denied` (Linux)**
+→ SELinux is blocking the bind mount. Every bind mount in `compose.yml` must end in `:z` (e.g. `- .:/app:z`). Check with `getenforce` — if it prints `Enforcing`, this is the cause.
+→ Verify the mount works: `podman run --rm -v .:/app:z python:3.13-slim head -1 /app/backend/start.sh`
 
-**Backend can't reach Ollama**
-→ On Windows, Podman containers reach the host via `172.24.0.1` (the Podman VM's default gateway), not via `host.docker.internal` (which resolves to an unused bridge).
-→ `compose.yml` sets `OLLAMA_HOST=http://172.24.0.1:11434` explicitly to work around this.
+**Connection badge is red**
+→ Make sure Ollama is running, then check the backend logs: `podman logs storytelling_backend_1`.
+→ The backend prints the detected host on start: `OLLAMA_HOST: http://…:11434`.
+→ Verify Ollama is reachable from the host: `curl http://localhost:11434/api/tags`
+→ Check what the backend sees: `curl http://localhost:8000/api/health` → `{"ollama":"ok","db":"ok"}`
+
+**Backend can't reach Ollama — Linux**
+→ Almost always the bind address: Ollama defaults to `127.0.0.1`, which containers cannot reach. See *Linux / Fedora setup* above and set `OLLAMA_HOST=0.0.0.0` for the Ollama service.
+→ Confirm from inside the container:
+
+```bash
+podman exec storytelling_backend_1 \
+  python3 -c "import urllib.request;print(urllib.request.urlopen('http://host.containers.internal:11434/api/tags',timeout=5).status)"
+```
+
+`Connection refused` = Ollama is still bound to loopback. A timeout = firewall.
+
+**Backend can't reach Ollama — Windows**
+→ On Windows, Podman containers reach the host via `172.24.0.1` (the Podman VM's default gateway), not via `host.docker.internal` (which resolves to an unused bridge). Set it explicitly in a `.env` file next to `compose.yml`:
+
+```
+OLLAMA_HOST=http://172.24.0.1:11434
+```
+
 → The Windows Firewall must allow inbound TCP 11434 from the Podman VM subnet (`172.24.0.0/20`). Run once **as Administrator**:
 
 ```powershell
@@ -297,8 +391,18 @@ New-NetFirewallRule -DisplayName "Ollama Podman" -Direction Inbound -Action Allo
 **Model not showing in selector**
 → The model must be downloaded first. Open **Models** → click **Download**.
 
-**`podman compose` not found**
-→ Install via `pip install podman-compose` or use Podman Desktop's built-in compose.
+**`podman compose` not found / "no compose provider found"**
+→ Fedora: `sudo dnf install podman-compose`, or just call `podman-compose …` directly.
+→ Windows/macOS: `pip install podman-compose` or use Podman Desktop's built-in compose.
+
+**`podman-compose down` prints `no container with name … tester_1 / workflow_1 / downloader_1`**
+→ Harmless. `down` tries to remove one container per service, but those three are one-shot services always started with `run --rm`, so they have already removed themselves. As long as there is no error for `backend`, the shutdown worked. Check with `podman ps -a` — an empty list means everything is gone.
+
+**`cannot open …/crun/…/exec.fifo: No such file or directory`**
+→ The container is already running (e.g. from an earlier `up -d`); `up` tried to start it a second time. Check with `podman ps`, then `podman-compose down` and start again.
+
+**`podman-compose run` warns "The input device is not a TTY"**
+→ Harmless for `downloader` and `workflow`. For `tester` (which shows an interactive menu) run it from a real terminal, not from a script or CI job.
 
 **Port 8000 already in use**
 → `podman compose down` then `podman compose up backend`.

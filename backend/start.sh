@@ -1,9 +1,12 @@
 #!/bin/sh
-# Auto-detect the Windows host IP so the container can reach Ollama.
+# Auto-detect the host IP so the container can reach Ollama (Windows, Linux, macOS).
 # Priority: OLLAMA_HOST env var → host.containers.internal (Podman 4.7+) → default gateway.
 # Override any time by setting OLLAMA_HOST in a .env file next to compose.yml.
+#
+# NOTE (Linux): Ollama binds to 127.0.0.1 by default, which containers cannot reach.
+# Ollama must listen on 0.0.0.0 — see "Linux / Fedora setup" in README.md.
 if [ -z "$OLLAMA_HOST" ]; then
-    # Podman 4.7+ writes the Windows host IP under this hostname
+    # Podman 4.7+ writes the host IP under this hostname
     HOST_IP=$(awk '/host\.containers\.internal/{print $1; exit}' /etc/hosts 2>/dev/null)
 
     # Fall back: default gateway from the kernel routing table

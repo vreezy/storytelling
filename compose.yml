@@ -1,12 +1,29 @@
 services:
 
+  # One-shot: downloads frontend libs (Bootstrap, jQuery) into ./libs
+  # Run with:  podman compose run --rm downloader --libs-only
+  #        or: podman-compose run --rm downloader --libs-only
+  # Without --libs-only it also fetches the ONNX models into ./models.
+  downloader:
+    image: python:3.13-slim
+    volumes:
+      # ":z" applies an SELinux shared label — required on Fedora/RHEL,
+      # silently ignored on Windows/macOS and on systems without SELinux.
+      - .:/app:z
+    working_dir: /app
+    # entrypoint (not command) so extra CLI args are appended, not replaced
+    entrypoint: ["python", "download.py"]
+    environment:
+      - LIBS_DIR=/app/libs
+      - MODELS_DIR=/app/models
+
   # FastAPI backend — REST API + static file server
-  # Start with: podman compose up backend
+  # Start with: podman compose up backend   /   podman-compose up backend
   backend:
     image: python:3.13-slim
     volumes:
-      - .:/app
-      - ./data:/app/data
+      - .:/app:z
+      - ./data:/app/data:z
       - pipcache:/root/.cache/pip
     working_dir: /app/backend
     # Skip pip when packages are already installed (restart works offline);
@@ -17,7 +34,8 @@ services:
       - "8000:8000"
     environment:
       - DATABASE_PATH=/app/data/story.db
-      - OLLAMA_HOST  # set in .env to override auto-detection
+      # Empty by default -> start.sh auto-detects the host. Override in .env.
+      - OLLAMA_HOST=${OLLAMA_HOST:-}
     restart: unless-stopped
 
   # One-shot: offline workflow — regenerates story summaries for all games
@@ -26,22 +44,22 @@ services:
   workflow:
     image: python:3.13-slim
     volumes:
-      - .:/app
-      - ./data:/app/data
+      - .:/app:z
+      - ./data:/app/data:z
       - pipcache:/root/.cache/pip
     working_dir: /app/backend
     command: >
       sh -c "(python -c 'import httpx' 2>/dev/null || pip install -q --retries 10 --timeout 300 httpx) && python workflow.py"
     environment:
       - DATABASE_PATH=/app/data/story.db
-      - OLLAMA_HOST  # set in .env to override auto-detection
+      - OLLAMA_HOST=${OLLAMA_HOST:-}
 
   # One-shot: plays 30 turns and writes an analysis report to tests/reports/
   # Run with: podman compose run --rm tester
   tester:
     image: python:3.13-slim
     volumes:
-      - .:/app
+      - .:/app:z
       - pipcache:/root/.cache/pip
     working_dir: /app
     command: >
@@ -60,4 +78,3 @@ networks:
   default:
     driver_opts:
       com.docker.network.driver.mtu: "1450"
-
