@@ -461,10 +461,23 @@ async def generate_turn(game_id: int, request: Request):
                     f"{OLLAMA_HOST}/api/chat",
                     json=ollama_req,
                 ) as r:
+                    # On failure Ollama states the real reason in the body
+                    # (e.g. {"error": "unable to load model: …"}). Surface it —
+                    # otherwise every failure looks like a broken stream.
+                    if r.status_code >= 400:
+                        raw = (await r.aread()).decode("utf-8", "replace").strip()
+                        try:
+                            raw = json.loads(raw).get("error", raw)
+                        except (ValueError, AttributeError):
+                            pass
+                        raise RuntimeError(f"Ollama HTTP {r.status_code}: {raw}")
+
                     async for line in r.aiter_lines():
                         if not line:
                             continue
                         chunk = json.loads(line)
+                        if chunk.get("error"):
+                            raise RuntimeError(f"Ollama error: {chunk['error']}")
                         token = chunk.get("message", {}).get("content", "")
                         if token:
                             response_text += token

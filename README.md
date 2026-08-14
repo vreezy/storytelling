@@ -391,6 +391,18 @@ New-NetFirewallRule -DisplayName "Ollama Podman" -Direction Inbound -Action Allo
 **Model not showing in selector**
 → The model must be downloaded first. Open **Models** → click **Download**.
 
+**Sending a turn fails with `Ollama HTTP 500: unable to load model …`**
+→ The model was downloaded fine but Ollama cannot run it — usually its architecture is newer than the installed Ollama. The real reason is only in the Ollama log:
+
+```bash
+journalctl -u ollama -n 50    # Linux
+```
+
+Look for a line like `error loading model architecture: unknown model architecture: 'gemma4'`. Either pick a model your Ollama version supports, or update Ollama. Note that the Fedora package (`dnf install ollama`) lags well behind upstream releases.
+
+**`ollama serve` says `bind: address already in use`**
+→ Ollama already runs as a service — that message means it is up, not broken. Use `systemctl status ollama` and `journalctl -u ollama -f` instead of starting a second instance.
+
 **`podman compose` not found / "no compose provider found"**
 → Fedora: `sudo dnf install podman-compose`, or just call `podman-compose …` directly.
 → Windows/macOS: `pip install podman-compose` or use Podman Desktop's built-in compose.

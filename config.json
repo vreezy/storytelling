@@ -61,6 +61,25 @@
       "link": "https://huggingface.co/TheBloke/Chronomaid-Storytelling-13B-GGUF"
     },
     {
+      "id": "https://huggingface.co/mradermacher/MN-Violet-Lotus-12B-GGUF",
+      "name": "Violet Lotus 12B Q8_0",
+      "sizeMb": 13100,
+      "nsfw": true,
+      "parameters": "12B",
+      "description": "Fine-tuned for creative fiction and mature narratives. Rich, immersive writing style with strong character voice.",
+      "link": "https://huggingface.co/mradermacher/MN-Violet-Lotus-12B-GGUF/resolve/main/MN-Violet-Lotus-12B.Q8_0.gguf"
+    },
+    {
+      "id": "https://huggingface.co/mradermacher/MN-Violet-Lotus-12B-GGUF",
+      "name": "Violet Lotus 12B Q4_K_S",
+      "sizeMb": 7200,
+      "nsfw": true,
+      "parameters": "12B",
+      "description": "Fine-tuned for creative fiction and mature narratives. Rich, immersive writing style with strong character voice.",
+      "link": "https://huggingface.co/mradermacher/MN-Violet-Lotus-12B-GGUF/resolve/main/MN-Violet-Lotus-12B.Q4_K_S.gguf"
+    },
+
+    {
       "id": "dolphin-mistral:7b",
       "name": "Dolphin Mistral 7B",
       "sizeMb": 4100,
@@ -141,8 +160,6 @@
       "description": "nsfw - adult writer",
       "link": "https://ollama.com/jimscard/new-adult-writer"
     }
-
-    
   ],
   "systemPrompt": "You are a narrator for an interactive story. Respond directly to the player's last action. Write exactly one short paragraph (3–4 sentences) in second person, present tense. End on a complete sentence. No meta-commentary, no questions directed at the player, no game mechanics text.",
   "customSystemPrompt": "Lead with the immediate consequence of the player's action. Show the world and characters reacting — make reactions visible, not atmospheric. Dialogue is natural and distinct per character; break grammar rules to express individual voices. Every sentence earns its place. React to what the player did — never advance the plot independently. One small step forward at a time, never multiple story beats at once.",
