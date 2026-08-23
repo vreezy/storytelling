@@ -200,7 +200,7 @@ async def get_game(game_id: int):
 async def update_game(game_id: int, request: Request):
     body = await request.json()
 
-    game_fields     = ["title", "description", "num_predict", "system_prompt", "custom_prompt",
+    game_fields     = ["title", "description", "model_id", "num_predict", "system_prompt", "custom_prompt",
                        "story_summary", "summarize_enabled", "player_intent_enabled"]
     scenario_fields = ["scenario_name", "scenario_icon", "scenario_description", "scenario_prompt", "opening_text"]
 
@@ -355,9 +355,15 @@ async def summarize_game(game_id: int, request: Request):
     if not game:
         raise HTTPException(404, "Game not found")
 
-    summary = await generate_summary(
-        dict(game)["model_id"], messages_to_summarize, existing_summary
-    )
+    try:
+        summary = await generate_summary(
+            dict(game)["model_id"], messages_to_summarize, existing_summary
+        )
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc))
+    if not summary:
+        # Never overwrite an existing summary with an empty result
+        raise HTTPException(502, "Ollama returned an empty summary")
     save_summary(game_id, summary)
     return {"summary": summary}
 
@@ -376,10 +382,14 @@ async def analyze_player_intent(game_id: int):
     if not user_inputs:
         return {"player_intent": ""}
 
-    intent = await generate_player_intent(
-        dict(game)["model_id"], user_inputs, get_intent_prompt()
-    )
-    save_player_intent(game_id, intent)
+    try:
+        intent = await generate_player_intent(
+            dict(game)["model_id"], user_inputs, get_intent_prompt()
+        )
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc))
+    if intent:
+        save_player_intent(game_id, intent)
     return {"player_intent": intent}
 
 
@@ -399,9 +409,12 @@ async def describe_scene(game_id: int, request: Request):
     if not messages:
         raise HTTPException(400, "messages required")
 
-    description = await generate_description(
-        dict(game)["model_id"], messages, character, get_describe_prompt(), get_describe_generation()
-    )
+    try:
+        description = await generate_description(
+            dict(game)["model_id"], messages, character, get_describe_prompt(), get_describe_generation()
+        )
+    except RuntimeError as exc:
+        raise HTTPException(502, str(exc))
     return {"description": description}
 
 

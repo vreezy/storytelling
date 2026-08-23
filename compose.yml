@@ -1,9 +1,8 @@
 services:
 
   # One-shot: downloads frontend libs (Bootstrap, jQuery) into ./libs
-  # Run with:  podman compose run --rm downloader --libs-only
-  #        or: podman-compose run --rm downloader --libs-only
-  # Without --libs-only it also fetches the ONNX models into ./models.
+  # Run with:  podman compose run --rm downloader
+  #        or: podman-compose run --rm downloader
   downloader:
     image: python:3.13-slim
     volumes:
@@ -11,11 +10,9 @@ services:
       # silently ignored on Windows/macOS and on systems without SELinux.
       - .:/app:z
     working_dir: /app
-    # entrypoint (not command) so extra CLI args are appended, not replaced
     entrypoint: ["python", "download.py"]
     environment:
       - LIBS_DIR=/app/libs
-      - MODELS_DIR=/app/models
 
   # FastAPI backend — REST API + static file server
   # Start with: podman compose up backend   /   podman-compose up backend

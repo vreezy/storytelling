@@ -9,7 +9,7 @@
     "maxNewTokens": 600,
     "temperature": 0.2,
     "repetitionPenalty": 1.1,
-    "numCtx": 4096,
+    "numCtx": 8192,
     "numGpu": 99,
     "numBatch": 512
   },
@@ -52,33 +52,14 @@
       "link": "https://ollama.com/library/mistral"
     },
     {
-      "id": "hf.co/TheBloke/Chronomaid-Storytelling-13B-GGUF:Q4_K_M",
-      "name": "Chronomaid 13B Storytelling",
-      "sizeMb": 7900,
-      "nsfw": true,
-      "parameters": "13B",
-      "description": "Fine-tuned for creative fiction and mature narratives. Rich, immersive writing style with strong character voice.",
-      "link": "https://huggingface.co/TheBloke/Chronomaid-Storytelling-13B-GGUF"
-    },
-    {
-      "id": "https://huggingface.co/mradermacher/MN-Violet-Lotus-12B-GGUF",
+      "id": "violet-lotus:12b-q8",
       "name": "Violet Lotus 12B Q8_0",
       "sizeMb": 13100,
       "nsfw": true,
       "parameters": "12B",
-      "description": "Fine-tuned for creative fiction and mature narratives. Rich, immersive writing style with strong character voice.",
-      "link": "https://huggingface.co/mradermacher/MN-Violet-Lotus-12B-GGUF/resolve/main/MN-Violet-Lotus-12B.Q8_0.gguf"
+      "description": "Fine-tuned for creative fiction and mature narratives (local build of MN-Violet-Lotus with the correct ChatML template — the raw hf.co import ships a broken Mistral template).",
+      "link": "https://huggingface.co/mradermacher/MN-Violet-Lotus-12B-GGUF/"
     },
-    {
-      "id": "https://huggingface.co/mradermacher/MN-Violet-Lotus-12B-GGUF",
-      "name": "Violet Lotus 12B Q4_K_S",
-      "sizeMb": 7200,
-      "nsfw": true,
-      "parameters": "12B",
-      "description": "Fine-tuned for creative fiction and mature narratives. Rich, immersive writing style with strong character voice.",
-      "link": "https://huggingface.co/mradermacher/MN-Violet-Lotus-12B-GGUF/resolve/main/MN-Violet-Lotus-12B.Q4_K_S.gguf"
-    },
-
     {
       "id": "dolphin-mistral:7b",
       "name": "Dolphin Mistral 7B",
@@ -132,33 +113,6 @@
       "parameters": "9B",
       "description": "Alibaba Qwen 3.5 9B — capable multilingual all-rounder with solid narrative coherence and instruction following.",
       "link": "https://ollama.com/library/qwen3.5"
-    },
-    {
-      "id": "mikemikeok/Qwythos-9B-Uncensored:latest",
-      "name": "Qwythos 9B Uncensored",
-      "sizeMb": 5500,
-      "nsfw": true,
-      "parameters": "9B",
-      "description": "Uncensored 9B fine-tune tuned for unrestricted roleplay and creative fiction. Few guardrails — use responsibly.",
-      "link": "https://ollama.com/mikemikeok/Qwythos-9B-Uncensored"
-    },
-    {
-      "id": "igorls/gemma-4-12B-it-qat-q4_0-unquantized-heretic:latest",
-      "name": "Gemma 4 12B Heretic (QAT)",
-      "sizeMb": 8100,
-      "nsfw": true,
-      "parameters": "12B",
-      "description": "Gemma 4 12B instruction-tuned, QAT q4_0, ",
-      "link": "https://ollama.com/igorls/gemma-4-12B-it-qat-q4_0-unquantized-heretic"
-    },
-    {
-      "id": "jimscard/new-adult-writer:latest",
-      "name": "new adult writer",
-      "sizeMb": 9600,
-      "nsfw": true,
-      "parameters": "12B",
-      "description": "nsfw - adult writer",
-      "link": "https://ollama.com/jimscard/new-adult-writer"
     }
   ],
   "systemPrompt": "You are a narrator for an interactive story. Respond directly to the player's last action. Write exactly one short paragraph (3–4 sentences) in second person, present tense. End on a complete sentence. No meta-commentary, no questions directed at the player, no game mechanics text.",
@@ -173,7 +127,7 @@
     "maxNewTokens": 200,
     "temperature": 0.75,
     "repetitionPenalty": 1.1,
-    "numCtx": 4096,
+    "numCtx": 8192,
     "numGpu": 99,
     "numBatch": 512
   }

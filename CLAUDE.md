@@ -105,19 +105,3 @@ def _migrate_add_foo_to_games(conn):
         conn.commit()
 ```
 
----
-
-## Model categories
-
-- **chatml template** (SmolLM2-*-Instruct): ChatML format `<|im_start|>role\n...<|im_end|>`
-- **tinyllama template** (TinyLlama-Chat): `<|role|>\n...</s>`
-- **completion** (GPT-2, distilgpt2, BLOOM, etc.): no chat format — plain text completion only
-
----
-
-## GPU / CPU
-
-- WebGPU availability is checked once on page load (`navigator.gpu`).
-- The toggle stays `disabled` if no WebGPU is detected — no manual override needed.
-- GPU dtype: `q4f16` (chatml/tinyllama), `q8` (completion)
-- CPU dtype: `q4` (chatml/tinyllama), `q8` (completion)

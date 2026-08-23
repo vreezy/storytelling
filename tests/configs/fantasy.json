@@ -1,6 +1,6 @@
 {
   "scenario_id": "fantasy",
-  "model_id": "dolphin3:8b",
+  "model_id": "violet-lotus:12b-q8",
   "game_title": "Playthrough Test — Fantasy",
   "base_url": "http://backend:8000",
   "dungeon_config_path": "config.json",

@@ -11,10 +11,9 @@ code in here — routes stay in main.py.
 import json
 import os
 
-import httpx
+from modules import ollama
 
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://host.docker.internal:11434")
-STATIC_DIR  = os.environ.get("STATIC_DIR", "/app")
+STATIC_DIR = os.environ.get("STATIC_DIR", "/app")
 
 # Fallback when config.json is unreadable or lacks describePrompt.
 DEFAULT_PROMPT = (
@@ -84,14 +83,13 @@ async def generate_description(model_id: str, messages: list, character: str,
         scene_text = f"{character}\n\n{scene_text}"
 
     gen = {**DEFAULT_GENERATION, **(generation or {})}
-    ollama_req = {
-        "model": model_id,
-        "messages": [
+    return await ollama.chat(
+        model_id,
+        [
             {"role": "system", "content": describe_prompt},
             {"role": "user", "content": scene_text},
         ],
-        "stream": False,
-        "options": {
+        {
             "temperature":    gen["temperature"],
             "num_predict":    gen["maxNewTokens"],
             "repeat_penalty": gen["repetitionPenalty"],
@@ -99,9 +97,4 @@ async def generate_description(model_id: str, messages: list, character: str,
             "num_gpu":        gen["numGpu"],
             "num_batch":      gen["numBatch"],
         },
-    }
-
-    async with httpx.AsyncClient(timeout=None) as client:
-        r = await client.post(f"{OLLAMA_HOST}/api/chat", json=ollama_req)
-        data = r.json()
-    return data.get("message", {}).get("content", "").strip()
+    )

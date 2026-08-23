@@ -1,12 +1,12 @@
 // StoryTelling — game screen logic
 
 import {
-  loadConfig, initApi, showToast, pollHealth, parseDate, renderTemplate, triggerDownload,
+  loadConfig, initApi, showToast, pollHealth, renderTemplate, triggerDownload,
 } from './utils.js';
 import {
   getGame, getCharacter, getCards, putCharacter, putGame,
   createCard, putCard, deleteCard,
-  streamTurn, putTurn, undoTurn, getStats, summarizeGame, analyzePlayerIntent,
+  streamTurn, putTurn, undoTurn, summarizeGame, analyzePlayerIntent,
   describeScene, getGameScenario, getModels,
 } from './api.js';
 
@@ -160,6 +160,11 @@ async function loadGame(id) {
   history.replaceState(null, '', `?id=${id}`);
   const el = document.getElementById('story-text');
   el.scrollTop = el.scrollHeight;
+
+  // The stored model may have been removed from Ollama since the last session
+  try {
+    await ensureModelInstalled(await getAvailableModels());
+  } catch { /* Ollama unreachable — pollHealth already reports it */ }
 }
 
 // ── Send action ───────────────────────────────────────────────────────────────
@@ -806,27 +811,60 @@ function renderWorldCards() {
 }
 
 // ── Model switcher ────────────────────────────────────────────────────────────
+// Configured models that are actually installed in Ollama.
+// Throws if the model list cannot be fetched.
+async function getAvailableModels() {
+  const data = await getModels();
+  const installedNames = (data.models || []).map(m => m.name);
+  return (state.config.availableModels || []).filter(m =>
+    installedNames.some(n => n === m.id || n.startsWith(m.id + ':'))
+  );
+}
+
+// Switch the game to `model` and persist it in the DB.
+async function switchModel(model) {
+  await putGame(state.gameId, { model_id: model.id });
+  state.modelId = model.id;
+  localStorage.setItem('dungeon_last_model', model.id);
+}
+
+// If the game's model is no longer installed (e.g. deleted from Ollama), fall
+// back to the first available one and persist that — otherwise every turn,
+// summary and intent run keeps hitting a model that no longer exists.
+async function ensureModelInstalled(available) {
+  if (available.some(m => m.id === state.modelId)) return;
+  if (!available.length) {
+    showToast(`Model "${state.modelId}" is not installed and no alternative is available.`, 'danger');
+    return;
+  }
+  const fallback = available[0];
+  const missing  = state.modelId;
+  try {
+    await switchModel(fallback);
+    showToast(`Model "${missing}" is no longer installed — switched to ${fallback.name}.`, 'warning');
+  } catch {
+    showToast('Model is no longer installed and the switch could not be saved.', 'danger');
+  }
+}
+
 async function renderModelCards() {
   const $list = $('#model-cards-list');
   $list.html('<div class="text-secondary small text-center py-3">Loading…</div>');
 
-  let installedNames = [];
+  let available = [];
   try {
-    const data = await getModels();
-    installedNames = (data.models || []).map(m => m.name);
+    available = await getAvailableModels();
   } catch {
     $list.html('<div class="text-danger small text-center py-3">Could not load models.</div>');
     return;
   }
 
-  const available = (state.config.availableModels || []).filter(m =>
-    installedNames.some(n => n === m.id || n.startsWith(m.id + ':'))
-  );
-
   if (!available.length) {
     $list.html('<div class="text-secondary small text-center py-3">No installed models found.</div>');
     return;
   }
+
+  await ensureModelInstalled(available);
 
   const active = available.find(m => m.id === state.modelId) || available[0];
 
@@ -861,9 +899,7 @@ async function renderModelCards() {
       $item.find('button').on('click', async () => {
         $trigger.prop('disabled', true);
         try {
-          await putGame(state.gameId, { model_id: m.id });
-          state.modelId = m.id;
-          localStorage.setItem('dungeon_last_model', m.id);
+          await switchModel(m);
           showToast(`Switched to ${m.name}.`, 'success');
           renderModelCards();
         } catch {

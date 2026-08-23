@@ -12,12 +12,10 @@ in main.py.
 import json
 import os
 
-import httpx
-
 from migrations import get_db
+from modules import ollama
 
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://host.docker.internal:11434")
-STATIC_DIR  = os.environ.get("STATIC_DIR", "/app")
+STATIC_DIR = os.environ.get("STATIC_DIR", "/app")
 
 # Fallback when config.json is unreadable or lacks playerIntentPrompt.
 DEFAULT_PROMPT = (
@@ -57,20 +55,14 @@ async def generate_player_intent(model_id: str, user_inputs: list, intent_prompt
     """Ask Ollama what the player wants, based on all their inputs so far."""
     inputs_text = "\n".join(f"{i + 1}. {text}" for i, text in enumerate(user_inputs))
 
-    ollama_req = {
-        "model": model_id,
-        "messages": [
+    return await ollama.chat(
+        model_id,
+        [
             {"role": "system", "content": intent_prompt},
             {"role": "user", "content": inputs_text},
         ],
-        "stream": False,
-        "options": {"temperature": 0.3, "num_predict": 120},
-    }
-
-    async with httpx.AsyncClient(timeout=None) as client:
-        r = await client.post(f"{OLLAMA_HOST}/api/chat", json=ollama_req)
-        data = r.json()
-    return data.get("message", {}).get("content", "").strip()
+        {"temperature": 0.3, "num_predict": 120},
+    )
 
 
 def save_player_intent(game_id: int, intent: str):

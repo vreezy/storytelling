@@ -6,12 +6,6 @@ export function initApi(config) {
   _base = config.backendUrl;
 }
 
-// ── Health ────────────────────────────────────────────────────────────────────
-export async function getHealth() {
-  const r = await fetch(`${_base}/api/health`, { signal: AbortSignal.timeout(3000) });
-  return r.json();
-}
-
 // ── Models ────────────────────────────────────────────────────────────────────
 export async function getModels() {
   const r = await fetch(`${_base}/api/models`);

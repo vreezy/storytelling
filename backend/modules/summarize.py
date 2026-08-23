@@ -7,13 +7,8 @@ by workflow.py (offline batch mode). No FastAPI code in here — routes stay
 in main.py.
 """
 
-import os
-
-import httpx
-
 from migrations import get_db
-
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://host.docker.internal:11434")
+from modules import ollama
 
 
 async def generate_summary(model_id: str, messages: list, existing_summary: str = "") -> str:
@@ -29,26 +24,20 @@ async def generate_summary(model_id: str, messages: list, existing_summary: str 
     if existing_summary:
         turns_text = f"Previous summary: {existing_summary}\n\nNew events:\n{turns_text}"
 
-    ollama_req = {
-        "model": model_id,
-        "messages": [
+    return await ollama.chat(
+        model_id,
+        [
             {
                 "role": "system",
                 "content": (
-                    "Summarize these story events in 2–3 sentences, past tense. "
+                    "Summarize these story events in 2-3 sentences, past tense. "
                     "Be specific: names, locations, key actions. No commentary."
                 ),
             },
             {"role": "user", "content": turns_text},
         ],
-        "stream": False,
-        "options": {"temperature": 0.3, "num_predict": 120},
-    }
-
-    async with httpx.AsyncClient(timeout=None) as client:
-        r = await client.post(f"{OLLAMA_HOST}/api/chat", json=ollama_req)
-        data = r.json()
-    return data.get("message", {}).get("content", "").strip()
+        {"temperature": 0.3, "num_predict": 120},
+    )
 
 
 def save_summary(game_id: int, summary: str):

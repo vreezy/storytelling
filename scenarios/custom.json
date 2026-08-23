@@ -1,8 +1,0 @@
-{
-  "id": "custom",
-  "name": "Custom World",
-  "icon": "✍️",
-  "description": "Create your own scenario",
-  "scenarioPrompt": null,
-  "openingText": null
-}
