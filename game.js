@@ -223,7 +223,7 @@ async function generateContinuation(actionText, actionType) {
       repeat_penalty: gen.repetitionPenalty ?? 1.1,
       num_ctx:        gen.numCtx   ?? 4096,
       num_gpu:        gen.numGpu   ?? 99,
-      num_batch:      gen.numBatch ?? 512,
+      num_batch:      gen.numBatch ?? 4096,
     };
 
     await streamTurn(
@@ -393,7 +393,14 @@ function buildMessages(actionType, playerLine) {
     actionPrompt,
   ].filter(Boolean).join('\n\n');
 
-  let history = [...state.messages];
+  // Merge consecutive same-role messages (e.g. two assistant messages after
+  // a "continue" turn) — strict chat templates reject non-alternating roles.
+  let history = [];
+  for (const m of state.messages) {
+    const last = history[history.length - 1];
+    if (last && last.role === m.role) last.content += '\n\n' + m.content;
+    else history.push({ ...m });
+  }
   if (history.length && history[0].role === 'assistant') {
     sysContent += '\n\nStory opening: ' + history[0].content;
     history = history.slice(1);

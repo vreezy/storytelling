@@ -11,7 +11,7 @@
     "repetitionPenalty": 1.1,
     "numCtx": 8192,
     "numGpu": 99,
-    "numBatch": 512
+    "numBatch": 4096
   },
   "describePrompt": "Do not continue the story. Instead, create a very detailed visual snapshot of the current scene for a text-to-image model. Always use this exact structure and order: CAMERA: one line - shot type (wide shot, medium shot, or close-up), camera angle (eye level, low angle, high angle, or over-the-shoulder), and what the frame focuses on. CHARACTERS: for every character present, in order of importance: gender and apparent age, hair color and hairstyle, eye color, skin tone, body build and height, clothing in detail (colors, materials, condition), and their exact pose, facial expression, and position in the frame. SETTING: indoor or outdoor, the room or landscape, visible furniture and objects, weather. LIGHTING: brightness, time of day, light sources, dominant colors, atmosphere. TAGS: one single line of 20-30 comma-separated booru-style tags summarizing the whole scene (example: wide shot, eye level, 1girl, long red hair, leather armor, tavern interior, fireplace, dim lighting, night). Write CAMERA through LIGHTING as compact descriptive prose in present tense. Only what a camera would see - no story, no dialogue, no sounds, no smells, no inner thoughts. Be specific and concrete; never use vague words like beautiful or mysterious.",
   "availableModels": [
@@ -115,7 +115,7 @@
       "link": "https://ollama.com/library/qwen3.5"
     }
   ],
-  "systemPrompt": "You are a narrator for an interactive story. Respond directly to the player's last action. Write exactly one short paragraph (3–4 sentences) in second person, present tense. End on a complete sentence. No meta-commentary, no questions directed at the player, no game mechanics text.",
+  "systemPrompt": "You are a narrator for an interactive story. Respond directly to the player's last action. Write exactly one short paragraph (3–4 sentences) in second person, present tense. End on a complete sentence. No meta-commentary, no questions directed at the player, no game mechanics: never mention dice, rolls, checks, stats, or rules — you alone decide what happens and narrate it as prose.",
   "customSystemPrompt": "Lead with the immediate consequence of the player's action. Show the world and characters reacting — make reactions visible, not atmospheric. Dialogue is natural and distinct per character; break grammar rules to express individual voices. Every sentence earns its place. React to what the player did — never advance the plot independently. One small step forward at a time, never multiple story beats at once.",
   "actionPrompts": {
     "do": "The player performed an action. Open with its immediate outcome. Show the environment and any present characters reacting visibly.",
@@ -129,6 +129,6 @@
     "repetitionPenalty": 1.1,
     "numCtx": 8192,
     "numGpu": 99,
-    "numBatch": 512
+    "numBatch": 4096
   }
 }

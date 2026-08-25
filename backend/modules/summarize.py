@@ -36,7 +36,7 @@ async def generate_summary(model_id: str, messages: list, existing_summary: str 
             },
             {"role": "user", "content": turns_text},
         ],
-        {"temperature": 0.3, "num_predict": 120},
+        {"temperature": 0.3, "num_predict": 120, "num_ctx": 8192, "num_batch": 4096},
     )
 
 

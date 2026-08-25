@@ -61,7 +61,7 @@ async def generate_player_intent(model_id: str, user_inputs: list, intent_prompt
             {"role": "system", "content": intent_prompt},
             {"role": "user", "content": inputs_text},
         ],
-        {"temperature": 0.3, "num_predict": 120},
+        {"temperature": 0.3, "num_predict": 120, "num_ctx": 8192, "num_batch": 4096},
     )
 
 

@@ -3,7 +3,8 @@
 import { initApi } from './api.js';
 
 export async function loadConfig() {
-  const r = await fetch('./config.json');
+  // no-store: a stale cached config silently reverts generation parameters
+  const r = await fetch('./config.json', { cache: 'no-store' });
   if (!r.ok) throw new Error('Failed to load config.json');
   const config = await r.json();
 

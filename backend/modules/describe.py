@@ -46,9 +46,9 @@ DEFAULT_GENERATION = {
     "maxNewTokens": 600,
     "temperature": 0.2,
     "repetitionPenalty": 1.1,
-    "numCtx": 4096,
+    "numCtx": 8192,
     "numGpu": 99,
-    "numBatch": 512,
+    "numBatch": 4096,
 }
 
 

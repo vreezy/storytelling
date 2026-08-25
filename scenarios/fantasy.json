@@ -3,7 +3,7 @@
   "name": "Dungeons & Dragons",
   "icon": "⚔️",
   "description": "The Forgotten Realms — races, classes, monsters and ancient magic",
-  "scenarioPrompt": "Forgotten Realms, D&D world. Races: elves, dwarves, tieflings, dragonborn, halflings, half-orcs. Classes: rogues, wizards, paladins, clerics, bards, druids. Monsters: dragons, beholders, undead, mind flayers, goblins. Name spells and weapons. Dark dungeons, smoky taverns, dangerous wilderness. Magic has a cost.",
+  "scenarioPrompt": "Forgotten Realms, D&D world. Races: elves, dwarves, tieflings, dragonborn, halflings, half-orcs. Classes: rogues, wizards, paladins, clerics, bards, druids. Monsters: dragons, beholders, undead, mind flayers, goblins. Name spells and weapons. Dark dungeons, smoky taverns, dangerous wilderness. Magic has a cost. Pure prose storytelling — this is a novel, not a tabletop session: no dice, no rolls, no checks, no character sheets.",
   "openingText": "The torchlight gutters as you descend the last worn step into the dungeon beneath Neverwinter. Ahead, the passage forks — from the left comes a rhythmic dripping and the stench of something long dead; from the right, a faint amber glow and the unmistakable hiss of draconic speech. Your hand finds the hilt of your weapon before you even decide.",
   "mainCharacters": [
     {

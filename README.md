@@ -422,3 +422,47 @@ Look for a line like `error loading model architecture: unknown model architectu
 **Slow generation**
 → Ollama uses your GPU automatically. If it's slow, check Task Manager → GPU.
 → Smaller models (SmolLM2 135M or 360M) generate much faster than 7B+.
+
+## Optimizations
+
+### `num_batch` — why it is 4096, not 512
+
+`num_batch` controls how many prompt tokens llama.cpp processes per pass. On
+some ROCm GPUs (seen on gfx1151 / Strix Halo) a prompt that spans **multiple
+batches corrupts the model state** and the reply degrades into word salad —
+deterministically, not randomly.
+
+A full game prompt (system prompt + scenario + character + world cards + story
+summary + history) is easily 1000+ tokens, so the old value of 512 split it
+into several batches and triggered the bug on every turn. Short test prompts
+stayed under one batch and looked fine, which made this painful to diagnose:
+
+| Prompt | num_batch | Result |
+|---|---|---|
+| ~1000 tokens (real game turn) | 128 / 512 | word salad |
+| ~1000 tokens (real game turn) | 2048 / 4096 | clean prose |
+| ~90 tokens (minimal test) | 512 | clean prose |
+
+Because of this, `numBatch` is set to **4096** in both generation blocks of
+`config.json`, and the summarize / player-intent / describe requests use the
+same explicit `num_ctx` / `num_batch` values. Keeping these identical across
+all request types has a second benefit: Ollama reuses one runner per model
+instead of restarting the llama-server whenever the options differ.
+
+Rules of thumb:
+
+- `num_batch` must be **larger than your longest prompt** (check
+  `prompt_tokens` in the debug panel after a turn).
+- If word salad ever returns, replay the stored `ollama_request` of the bad
+  turn (in the `turns` table) directly against Ollama and vary only
+  `num_batch` — that isolates the bug in one step.
+- This is an upstream llama.cpp/ROCm issue; an Ollama update may remove the
+  need for the workaround.
+
+### One resident model at a time
+
+Ollama's free-memory accounting overcommits on unified-memory GPUs, so a
+second resident model silently corrupts generation instead of being evicted.
+The backend therefore unloads every other model before each turn
+(`unload_others()` in `backend/modules/ollama.py`). Side effect: a model kept
+loaded by another tool (e.g. Open WebUI) is unloaded when a game turn runs.

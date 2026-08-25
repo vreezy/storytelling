@@ -21,6 +21,7 @@ from modules.describe import generate_description, get_describe_generation, get_
 from modules.player_intent import (
     fetch_user_inputs, generate_player_intent, get_intent_prompt, save_player_intent,
 )
+from modules.ollama import unload_others
 from modules.summarize import generate_summary, save_summary
 
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://host.docker.internal:11434")
@@ -441,7 +442,10 @@ async def generate_turn(game_id: int, request: Request):
     repeat_penalty = body.get("repeat_penalty", 1.1)
     num_ctx        = body.get("num_ctx", 4096)
     num_gpu        = body.get("num_gpu", 99)
-    num_batch      = body.get("num_batch", 512)
+    # Floor of 4096: prompts spanning multiple batches corrupt generation on
+    # some ROCm GPUs (see README "Optimizations") — never trust a smaller
+    # client value, it may come from a stale cached config.json.
+    num_batch      = max(body.get("num_batch", 4096), 4096)
 
     ollama_req = {
         "model":      model_id,
@@ -468,6 +472,9 @@ async def generate_turn(game_id: int, request: Request):
         error_msg         = None
 
         try:
+            # A second resident model corrupts generation on unified-memory
+            # GPUs — make sure only the active model stays loaded.
+            await unload_others(model_id)
             async with httpx.AsyncClient(timeout=None) as client:
                 async with client.stream(
                     "POST",
